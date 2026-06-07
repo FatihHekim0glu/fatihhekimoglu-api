@@ -33,6 +33,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
 from ..deps import get_supabase
+from ..lib.pairs_trading._polygon_adapter import load_prices_via_provider
+from ..lib.polygon.provider import (
+    PolygonProvider,
+    PolygonProviderFallback,
+    make_provider,
+)
+from ..lib.polygon.sp500_universe import SP500UniverseBuilder
 
 # Importing the vendor package mutates sys.path so the absolute `pairs.*`
 # imports below resolve to api/lib/pairs_trading/_vendor/pairs/.
@@ -47,8 +54,9 @@ router = APIRouter(prefix="/tools/pairs-trading", tags=["pairs-trading"])
 # Constants & method translation
 # ---------------------------------------------------------------------------
 
-Universe = Literal["curated_25_v1", "xlk_v1"]
+Universe = Literal["curated_25_v1", "xlk_v1", "sp500-pit"]
 FdrMethod = Literal["benjamini_hochberg", "bonferroni", "none"]
+DataSource = Literal["polygon", "yfinance", "cache"]
 
 # Friendly slug -> statsmodels multipletests method tag (mirrors selection.mtc).
 _MTC_METHOD_MAP: dict[str, str] = {
@@ -118,6 +126,11 @@ class PairsTradingResponse(BaseModel):
     train_start: date
     train_end: date
     mtc_method: FdrMethod
+    data_source: DataSource = Field(
+        "yfinance",
+        description="Where the OHLCV bars came from: 'polygon' (live + cache), "
+        "'yfinance' (fallback), or 'cache' (Polygon cache-only hit).",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +155,8 @@ def _resolve_pair_tuples(universe: str) -> list[tuple[str, str]]:
     """Return all candidate (ticker_a, ticker_b) tuples for a universe.
 
     `curated_25_v1` is a pair universe; `xlk_v1` is a constituent universe and
-    yields all within-universe pairs.
+    yields all within-universe pairs. `sp500-pit` is built dynamically in the
+    router via :class:`SP500UniverseBuilder` and is NOT resolved here.
     """
     from pairs.data import load_pair_universe, load_universe  # type: ignore[import-not-found]
 
@@ -154,6 +168,41 @@ def _resolve_pair_tuples(universe: str) -> list[tuple[str, str]]:
 
         u = load_universe(universe)
         return list(combinations(u.tickers, 2))
+
+
+def _resolve_sp500_pit_pairs(
+    provider: "PolygonProvider | PolygonProviderFallback",
+    supabase: Any,
+    start: date,
+    end: date,
+) -> list[tuple[str, str]]:
+    """Build the point-in-time S&P 500 ticker union and enumerate all pairs.
+
+    Only valid when the real Polygon provider is configured —
+    ``SP500UniverseBuilder.get_grouped_daily`` has no yfinance equivalent.
+    Returns the within-universe ``combinations(members, 2)`` tuple list.
+    Raises ``ValueError`` when the fallback provider is in play so the caller
+    can surface a clean 400.
+    """
+    from itertools import combinations
+
+    if not isinstance(provider, PolygonProvider):
+        raise ValueError(
+            "universe='sp500-pit' requires POLYGON_API_KEY; current provider "
+            "is the yfinance fallback."
+        )
+    builder = SP500UniverseBuilder(provider=provider, supabase_client=supabase)
+    window = builder.get_membership_window(start, end)
+    members: set[str] = set()
+    for members_list in window.values():
+        members.update(members_list)
+    if len(members) < 2:
+        raise ValueError(
+            "SP500UniverseBuilder returned fewer than 2 members for the "
+            "requested window."
+        )
+    tickers = sorted(members)
+    return list(combinations(tickers, 2))
 
 
 def _flatten_close_prices(raw: pd.DataFrame) -> pd.DataFrame:
@@ -218,10 +267,22 @@ def _build_histogram(p_values: list[float], cutoff: float) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def get_provider(
+    supabase=Depends(get_supabase),
+) -> "PolygonProvider | PolygonProviderFallback":
+    """FastAPI dependency factory for the shared Polygon provider.
+
+    Wrapped here (rather than wired directly via ``make_provider``) so tests
+    can override it through ``app.dependency_overrides[get_provider]``.
+    """
+    return make_provider(supabase_client=supabase)
+
+
 @router.post("/run", response_model=PairsTradingResponse)
 def run(
     req: PairsTradingRequest,
     supabase=Depends(get_supabase),
+    provider: "PolygonProvider | PolygonProviderFallback" = Depends(get_provider),
 ) -> PairsTradingResponse:
     """Run the cointegration scan over the chosen universe & window."""
     from pairs._exceptions import InputError, PairsError  # type: ignore[import-not-found]
@@ -232,7 +293,17 @@ def run(
 
     # 1. Resolve pair tuples for the requested universe.
     try:
-        pair_tuples = _resolve_pair_tuples(req.universe)
+        if req.universe == "sp500-pit":
+            pair_tuples = _resolve_sp500_pit_pairs(
+                provider, supabase, req.train_start, req.train_end
+            )
+        else:
+            pair_tuples = _resolve_pair_tuples(req.universe)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     except Exception as exc:
         logger.exception("universe resolution failed for %s", req.universe)
         raise HTTPException(
@@ -246,11 +317,34 @@ def run(
         )
     tickers = sorted({t for a, b in pair_tuples for t in (a, b)})
 
-    # 2. Fetch prices.
+    # 2. Fetch prices via the injected provider when a real Polygon key is
+    #    configured; otherwise fall back to the vendored yfinance loader so
+    #    local dev keeps working without a key.
+    use_polygon = isinstance(provider, PolygonProvider)
+    data_source: DataSource = "polygon" if use_polygon else "yfinance"
     try:
-        raw_prices = load_prices(
-            tickers, start=req.train_start.isoformat(), end=req.train_end.isoformat()
-        )
+        if use_polygon:
+            raw_prices = load_prices_via_provider(
+                provider,
+                tickers,
+                start=req.train_start.isoformat(),
+                end=req.train_end.isoformat(),
+            )
+            if raw_prices.empty:
+                # Provider returned nothing usable — degrade to yfinance so
+                # the demo doesn't blank out on a transient Polygon hiccup.
+                raw_prices = load_prices(
+                    tickers,
+                    start=req.train_start.isoformat(),
+                    end=req.train_end.isoformat(),
+                )
+                data_source = "yfinance"
+        else:
+            raw_prices = load_prices(
+                tickers,
+                start=req.train_start.isoformat(),
+                end=req.train_end.isoformat(),
+            )
     except (InputError, PairsError) as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -348,6 +442,7 @@ def run(
         train_start=req.train_start,
         train_end=req.train_end,
         mtc_method=req.fdr_method,
+        data_source=data_source,
     )
 
     _maybe_log_run(supabase, req, response)
@@ -373,6 +468,7 @@ def _maybe_log_run(
                     "summary": resp.summary.model_dump(mode="json"),
                     "universe": resp.universe,
                     "mtc_method": resp.mtc_method,
+                    "data_source": resp.data_source,
                 },
                 "status": "ok",
             }

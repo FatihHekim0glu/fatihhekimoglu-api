@@ -18,7 +18,7 @@ import logging
 import math
 import re
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -32,6 +32,27 @@ from ..deps import get_supabase
 # `ma_backtester` namespace into sys.modules so the vendored sources resolve.
 from ..lib import ma_crossover_backtest as _vendor  # noqa: F401
 from ..lib.ma_crossover_backtest import backtester, benchmark, config, costs, data, metrics
+from ..lib.ma_crossover_backtest._polygon_adapter import load_close_via_provider
+from ..lib.polygon.provider import (
+    PolygonProvider,
+    PolygonProviderFallback,
+    make_provider,
+)
+
+DataSource = Literal["polygon", "yfinance", "cache"]
+
+
+def get_provider(
+    supabase=Depends(get_supabase),
+) -> PolygonProvider | PolygonProviderFallback:
+    """Dependency that hands the endpoint a Polygon (or fallback) provider.
+
+    The provider is built per-request rather than cached because:
+      - ``PolygonProvider`` owns an httpx session that we close after the run,
+      - the Supabase client is already cached by ``get_supabase``,
+      - and the no-key fallback is essentially free to construct.
+    """
+    return make_provider(supabase_client=supabase)
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +161,10 @@ class MaCrossoverResponse(BaseModel):
     benchmark: BenchmarkStats
     equity_curve: dict[str, Any] = Field(..., description="Plotly figure JSON: log-scale equity.")
     underwater_drawdown: dict[str, Any] = Field(..., description="Plotly figure JSON: drawdown.")
+    data_source: DataSource = Field(
+        "yfinance",
+        description="Which OHLCV pipeline served the close series for this run.",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +287,7 @@ def _build_drawdown_figure(
 def run(
     req: MaCrossoverRequest,
     supabase=Depends(get_supabase),
+    provider: PolygonProvider | PolygonProviderFallback = Depends(get_provider),
 ) -> MaCrossoverResponse:
     """Execute the headline ma-crossover-backtest compute pipeline.
 
@@ -285,11 +311,16 @@ def run(
 
     cost_model = costs.FixedBpsCost(cost_cfg)
 
-    # Load prices - parquet cache lives in cwd/data/cache/ohlcv/ by default.
-    # That's acceptable for the API process; a deeper integration with the
-    # platform-level ohlcv_cache table is a follow-up.
+    # Load prices via the unified Polygon provider when configured; the
+    # adapter transparently falls back to the vendored data.load_close path
+    # (parquet cache + yfinance + Stooq) when POLYGON_API_KEY is absent.
     try:
-        close = data.load_close(req.ticker, start=req.start_date, end=req.end_date)
+        close, data_source = load_close_via_provider(
+            provider,
+            req.ticker,
+            start=req.start_date,
+            end=req.end_date,
+        )
     except data.DataQualityError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -403,6 +434,7 @@ def run(
         benchmark=stats,
         equity_curve=equity_json,
         underwater_drawdown=drawdown_json,
+        data_source=data_source,  # type: ignore[arg-type]
     )
 
     _maybe_log_run(supabase, req, response)

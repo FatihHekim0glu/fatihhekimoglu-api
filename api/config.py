@@ -23,10 +23,15 @@ class Settings:
     cors_origins: tuple[str, ...]
     log_level: str
     diskcache_dir: str
+    polygon_api_key: str
 
     @property
     def supabase_enabled(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_role_key)
+
+    @property
+    def polygon_enabled(self) -> bool:
+        return bool(self.polygon_api_key)
 
 
 def load_settings() -> Settings:
@@ -41,6 +46,7 @@ def load_settings() -> Settings:
         ),
         log_level=os.environ.get("FH_LOG_LEVEL", "INFO"),
         diskcache_dir=os.environ.get("FH_DISKCACHE_DIR", ".yfcache"),
+        polygon_api_key=os.environ.get("POLYGON_API_KEY", ""),
     )
 
 

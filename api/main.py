@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import __version__
 from .config import settings
 from .routers import (
+    eigen_portfolios,
     factorlab,
     ma_crossover_backtest,
     markowitz_optimizer,
@@ -76,3 +77,4 @@ app.include_router(factorlab.router)
 app.include_router(pairs_trading.router)
 app.include_router(ma_crossover_backtest.router)
 app.include_router(stock_price_forecast.router)
+app.include_router(eigen_portfolios.router)

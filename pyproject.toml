@@ -97,4 +97,5 @@ addopts = "-ra --strict-markers"
 markers = [
     "network: tests that hit live external APIs (yfinance/Stooq)",
     "slow: tests >1s",
+    "unit: pure unit tests; no I/O, <2s each",
 ]

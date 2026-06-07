@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+from datetime import date as _date
 from typing import Any, Literal
 
 import numpy as np
@@ -39,6 +40,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
 from ..deps import get_supabase
+from ..lib.polygon.provider import (
+    PolygonProvider,
+    PolygonProviderFallback,
+    make_provider,
+)
+from ..lib.polygon.sp500_universe import SP500UniverseBuilder
 
 # Importing the vendor package side-effects ``sys.path`` so that
 # ``import markowitz`` resolves to the vendored copy. Keep this import even if
@@ -56,6 +63,8 @@ router = APIRouter(prefix="/tools/markowitz-optimizer", tags=["markowitz-optimiz
 
 CovMethod = Literal["Sample", "LedoitWolf"]
 MeanMethod = Literal["Sample", "JorionBayesStein", "CAPM"]
+Universe = Literal["custom", "sp500-pit"]
+DataSource = Literal["polygon", "yfinance", "cache", "synthetic"]
 
 _TRADING_DAYS = 252
 _FRONTIER_POINTS = 40
@@ -83,6 +92,15 @@ class MarkowitzRequest(BaseModel):
     risk_free_rate: float = Field(0.04, ge=-0.05, le=0.25)
     use_real_data: bool = Field(True)
     seed: int = Field(7, ge=0, le=999_999)
+    universe: Universe = Field(
+        "custom",
+        description=(
+            "'custom' uses the ``tickers`` field as-is; 'sp500-pit' builds a "
+            "point-in-time S&P 500 membership from the Polygon survivorship "
+            "builder over [start, end] and unions all members (only available "
+            "when POLYGON_API_KEY is configured)."
+        ),
+    )
 
     @field_validator("tickers")
     @classmethod
@@ -130,7 +148,7 @@ class MarkowitzResponse(BaseModel):
     weights_figure: dict[str, Any] = Field(
         ..., description="Plotly figure JSON: {data, layout} — horizontal weights bar."
     )
-    data_source: Literal["yfinance", "synthetic"]
+    data_source: DataSource
 
 
 # ---------------------------------------------------------------------------
@@ -185,8 +203,13 @@ def _synthetic_returns(
 
 
 def _load_returns(req: MarkowitzRequest) -> tuple[pd.DataFrame, str]:
-    """Return (returns_df, data_source). Falls back to synthetic on any error
-    so the demo still produces a plot even when yfinance is unreachable."""
+    """Legacy yfinance loader — retained for tests / non-provider callers.
+
+    Returns ``(returns_df, data_source)``. Falls back to synthetic on any
+    error so the demo still produces a plot when yfinance is unreachable.
+    Prefer :func:`_load_returns_via_provider` when a Polygon provider is
+    available — it shares cache with the rest of the platform.
+    """
     tickers = _parse_ticker_list(req.tickers)
     if req.use_real_data:
         try:
@@ -217,6 +240,106 @@ def _load_returns(req: MarkowitzRequest) -> tuple[pd.DataFrame, str]:
                 exc.__class__.__name__,
             )
     return _synthetic_returns(tickers, req.start, req.end, req.seed), "synthetic"
+
+
+def _resolve_universe_tickers(
+    req: MarkowitzRequest,
+    provider: PolygonProvider | PolygonProviderFallback,
+    supabase: Any,
+) -> tuple[str, ...]:
+    """Return the ticker tuple to fetch given ``req.universe``.
+
+    'custom' returns the parsed ticker list verbatim. 'sp500-pit' walks the
+    SP500UniverseBuilder over the request window and unions every member
+    seen in the period, giving Markowitz a survivorship-bias-free universe.
+    Requires :class:`PolygonProvider` (not the fallback); raises ValueError
+    otherwise so the caller can surface a clean 400.
+    """
+    if req.universe == "custom":
+        return _parse_ticker_list(req.tickers)
+    if not isinstance(provider, PolygonProvider):
+        raise ValueError(
+            "universe='sp500-pit' requires POLYGON_API_KEY; current provider "
+            "is the yfinance fallback."
+        )
+    start = _date.fromisoformat(req.start)
+    end = _date.fromisoformat(req.end)
+    builder = SP500UniverseBuilder(provider=provider, supabase_client=supabase)
+    window = builder.get_membership_window(start, end)
+    members: set[str] = set()
+    for members_list in window.values():
+        members.update(members_list)
+    if len(members) < 2:
+        raise ValueError(
+            "SP500UniverseBuilder returned fewer than 2 members for the "
+            "requested window."
+        )
+    return tuple(sorted(members))
+
+
+def _load_returns_via_provider(
+    req: MarkowitzRequest,
+    provider: PolygonProvider | PolygonProviderFallback,
+    supabase: Any,
+) -> tuple[pd.DataFrame, str]:
+    """Fetch daily returns through the shared :class:`PolygonProvider`.
+
+    Returns ``(returns_df, data_source)``. ``data_source`` is one of:
+      * ``"polygon"`` when the real Polygon adapter served the data
+      * ``"yfinance"`` when the fallback adapter served the data
+      * ``"synthetic"`` when no real data could be loaded
+
+    Errors degrade to the legacy yfinance / synthetic loader so the demo
+    never blanks out on a transient provider hiccup.
+    """
+    if not req.use_real_data:
+        tickers = _resolve_universe_tickers(req, provider, supabase)
+        return _synthetic_returns(tickers, req.start, req.end, req.seed), "synthetic"
+
+    try:
+        tickers = _resolve_universe_tickers(req, provider, supabase)
+    except ValueError:
+        # sp500-pit on a fallback provider: degrade gracefully to legacy path.
+        return _load_returns(req)
+
+    try:
+        start = _date.fromisoformat(req.start)
+        end = _date.fromisoformat(req.end)
+    except ValueError:
+        return _load_returns(req)
+
+    closes: dict[str, pd.Series] = {}
+    for ticker in tickers:
+        try:
+            df = provider.get_eod(ticker, start, end)
+        except Exception as exc:  # noqa: BLE001 — degrade per-ticker
+            logger.warning(
+                "provider.get_eod(%s) failed (%s); skipping",
+                ticker,
+                exc.__class__.__name__,
+            )
+            continue
+        if df is None or df.empty or "Close" not in df.columns:
+            continue
+        closes[ticker] = df["Close"].astype(float)
+
+    if len(closes) < 2:
+        # Not enough tickers came back — fall back to the legacy loader so
+        # we still produce a plot.
+        return _load_returns(req)
+
+    prices = pd.DataFrame(closes).sort_index()
+    prices = prices.dropna(how="all").ffill().dropna()
+    rets = prices.pct_change().dropna()
+    if rets.empty:
+        return _load_returns(req)
+
+    keep = [t for t in tickers if t in rets.columns]
+    if len(keep) < 2:
+        return _load_returns(req)
+
+    source: str = "polygon" if isinstance(provider, PolygonProvider) else "yfinance"
+    return rets[keep], source
 
 
 # ---------------------------------------------------------------------------
@@ -458,10 +581,22 @@ def _weights_figure(weights: dict[str, float]) -> go.Figure:
 # ---------------------------------------------------------------------------
 
 
+def get_provider(
+    supabase=Depends(get_supabase),
+) -> PolygonProvider | PolygonProviderFallback:
+    """FastAPI dependency factory for the shared Polygon provider.
+
+    Wrapped here (rather than wired directly via ``make_provider``) so tests
+    can override it through ``app.dependency_overrides[get_provider]``.
+    """
+    return make_provider(supabase_client=supabase)
+
+
 @router.post("/run", response_model=MarkowitzResponse)
 def run(
     req: MarkowitzRequest,
     supabase=Depends(get_supabase),
+    provider: PolygonProvider | PolygonProviderFallback = Depends(get_provider),
 ) -> MarkowitzResponse:
     """Execute the markowitz-optimizer compute pipeline (single-shot, sync).
 
@@ -470,7 +605,7 @@ def run(
       → MeanVariance.max_sharpe → summary metrics → plotly figures.
     """
     try:
-        returns, data_source = _load_returns(req)
+        returns, data_source = _load_returns_via_provider(req, provider, supabase)
         result = _compute_frontier(returns, req)
     except HTTPException:
         raise
