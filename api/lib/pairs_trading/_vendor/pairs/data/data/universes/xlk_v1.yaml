@@ -1,0 +1,26 @@
+schema_version: 1
+universe_id: xlk_v1
+description: Top-20 XLK constituents snapshot
+constituents_source: SSGA XLK holdings page
+asof: "2024-01-01"
+tickers:
+  - AAPL
+  - MSFT
+  - NVDA
+  - AVGO
+  - ORCL
+  - CRM
+  - ADBE
+  - CSCO
+  - AMD
+  - ACN
+  - IBM
+  - NOW
+  - QCOM
+  - INTU
+  - AMAT
+  - TXN
+  - LRCX
+  - MU
+  - ADI
+  - KLAC

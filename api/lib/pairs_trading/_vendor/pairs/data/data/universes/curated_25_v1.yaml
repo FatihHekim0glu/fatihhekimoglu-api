@@ -1,0 +1,29 @@
+schema_version: 1
+universe_id: curated_25_v1
+description: 25 hand-picked economic pairs
+pairs:
+  - {a: KO,   b: PEP,  rationale: "Beverage duopoly"}
+  - {a: MA,   b: V,    rationale: "Payment networks"}
+  - {a: XOM,  b: CVX,  rationale: "Integrated oil majors"}
+  - {a: GLD,  b: GDX,  rationale: "Gold spot vs miners"}
+  - {a: USO,  b: XLE,  rationale: "Oil spot vs energy equity"}
+  - {a: JPM,  b: BAC,  rationale: "Money-center banks"}
+  - {a: MSFT, b: ORCL, rationale: "Enterprise software"}
+  - {a: CAT,  b: DE,   rationale: "Industrial machinery"}
+  - {a: HD,   b: LOW,  rationale: "Home improvement retail"}
+  - {a: UPS,  b: FDX,  rationale: "Parcel delivery"}
+  - {a: MCD,  b: YUM,  rationale: "QSR chains"}
+  - {a: DIS,  b: CMCSA, rationale: "Media conglomerates"}
+  - {a: GS,   b: MS,   rationale: "Investment banks"}
+  - {a: WMT,  b: TGT,  rationale: "Big-box retail"}
+  - {a: GM,   b: F,    rationale: "Detroit automakers"}
+  - {a: AAL,  b: DAL,  rationale: "Network carriers"}
+  - {a: KMI,  b: WMB,  rationale: "Pipeline operators"}
+  - {a: DUK,  b: SO,   rationale: "Southeast utilities"}
+  - {a: NEM,  b: GOLD, rationale: "Major gold miners"}
+  - {a: COP,  b: EOG,  rationale: "Shale E&P"}
+  - {a: ABBV, b: PFE,  rationale: "Big pharma"}
+  - {a: ADP,  b: PAYX, rationale: "Payroll processors"}
+  - {a: AMAT, b: LRCX, rationale: "Semi equipment"}
+  - {a: NVDA, b: AMD,  rationale: "GPU vendors"}
+  - {a: BA,   b: LMT,  rationale: "Defense + aerospace"}

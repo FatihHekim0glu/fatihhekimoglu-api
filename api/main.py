@@ -20,7 +20,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__
 from .config import settings
-from .routers import stock_dashboard
+from .routers import (
+    factorlab,
+    ma_crossover_backtest,
+    markowitz_optimizer,
+    pairs_trading,
+    stock_dashboard,
+    stock_price_forecast,
+)
 
 logging.basicConfig(
     level=settings.log_level,
@@ -64,3 +71,8 @@ def health() -> dict[str, str]:
 
 
 app.include_router(stock_dashboard.router)
+app.include_router(markowitz_optimizer.router)
+app.include_router(factorlab.router)
+app.include_router(pairs_trading.router)
+app.include_router(ma_crossover_backtest.router)
+app.include_router(stock_price_forecast.router)

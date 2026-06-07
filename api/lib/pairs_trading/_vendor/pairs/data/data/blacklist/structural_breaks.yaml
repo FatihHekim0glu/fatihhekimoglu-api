@@ -1,0 +1,11 @@
+schema_version: 1
+window_days: 30
+entries:
+  - {ticker: ABBV, event: spinoff_from_ABT, date: 2013-01-02}
+  - {ticker: ABT,  event: spinoff_ABBV,    date: 2013-01-02}
+  - {ticker: DELL, event: emc_merger,      date: 2016-09-07}
+  - {ticker: KHC,  event: kraft_heinz_merger, date: 2015-07-02}
+  - {ticker: DOW,  event: dowdupont_split, date: 2019-04-01}
+  - {ticker: CTVA, event: dowdupont_split, date: 2019-06-01}
+  - {ticker: TMUS, event: sprint_merger,   date: 2020-04-01}
+  - {ticker: WBD,  event: discovery_merger, date: 2022-04-08}
