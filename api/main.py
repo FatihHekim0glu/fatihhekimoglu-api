@@ -23,6 +23,7 @@ from .config import settings
 from .routers import (
     eigen_portfolios,
     factorlab,
+    hrp_portfolio,
     ma_crossover_backtest,
     markowitz_optimizer,
     pairs_trading,
@@ -78,3 +79,4 @@ app.include_router(pairs_trading.router)
 app.include_router(ma_crossover_backtest.router)
 app.include_router(stock_price_forecast.router)
 app.include_router(eigen_portfolios.router)
+app.include_router(hrp_portfolio.router)

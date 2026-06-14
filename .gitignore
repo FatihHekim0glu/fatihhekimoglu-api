@@ -27,3 +27,4 @@ Thumbs.db
 
 # Local cache (the source's .yfcache pattern, kept for local dev)
 .yfcache/
+*.key
