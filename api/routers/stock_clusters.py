@@ -350,6 +350,21 @@ def _load_returns_via_provider(
         )
         tickers, is_pit = _parse_ticker_list(req.tickers), False
 
+    # Synchronous-endpoint budget guard: a full point-in-time S&P 500 (~500 names)
+    # crawled serially through Polygon blows the request budget and hangs. The
+    # interactive cluster map is meant for a focused universe, so when the resolved
+    # PIT membership exceeds the sync cap, fall back to the request's custom ticker
+    # list (fast, real data). The survivorship-clean full-universe path belongs to
+    # the deferred diversification job, not the synchronous map.
+    _SYNC_PIT_MAX_ASSETS = 60
+    if is_pit and len(tickers) > _SYNC_PIT_MAX_ASSETS:
+        logger.info(
+            "PIT universe of %d exceeds the sync cap (%d); using the custom ticker list",
+            len(tickers),
+            _SYNC_PIT_MAX_ASSETS,
+        )
+        tickers, is_pit = _parse_ticker_list(req.tickers), False
+
     try:
         start = _date.fromisoformat(req.start)
         end = _date.fromisoformat(req.end)
