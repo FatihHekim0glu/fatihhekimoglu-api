@@ -20,14 +20,26 @@ The headline verdict is a PURE function of the diversification inference outputs
 read "clusters beat 1/N" while the Memmel-JK test is insignificant or the deflated
 Sharpe is non-positive.
 
-HONESTY / LEAKAGE DISCIPLINE
-    - Correlation, RMT denoise, Mantegna distance, gap-``k`` and labels are fit on
-      the supplied (train) panel and FROZEN; the diversification horse race then
-      re-applies those frozen labels through the no-lookahead walk-forward engine.
+HONESTY / LEAKAGE DISCIPLINE — what is fit on what
+    - The DISPLAY cluster map (the ``ClusterResult`` carried on the bundle) is fit
+      on the FULL supplied panel: correlation -> (RMT denoise) -> Mantegna distance
+      -> gap-``k`` -> labels. This full-panel map is DESCRIPTIVE — it drives the
+      heatmap/dendrogram/MST/embedding figures and the post-hoc ARI-vs-GICS
+      diagnostic ONLY. It is NOT a backtest and is NEVER applied out-of-sample.
+    - The diversification horse race is a TRUE walk-forward backtest with NO
+      look-ahead: it does NOT reuse the full-panel labels. Inside each walk-forward
+      TRAIN window it RE-FITS clusters (correlation -> RMT -> distance -> cut, on
+      that window's data alone) and applies those train-only labels to the next OOS
+      window with purge + embargo + ``shift(1)``. Post-cutoff returns therefore
+      cannot shape the in-sample clusters of any OOS window. This reuses the exact
+      per-window pattern of
+      :func:`~stockclusters.stability.resample._default_clusterer`.
     - The DSR ``n_trials`` is the FULL product of every swept axis
-      (``#linkages x #k-candidates x #weighting-schemes x #denoise-settings x
-      #cost-grid-points``). Under-counting manufactures false significance, so the
-      count is assembled explicitly in :func:`_dsr_trial_count` and guarded by the
+      (``#clustering-families x #k-candidates x #weighting-schemes x
+      #denoise-settings x #cost-grid-points``). The clustering-family axis is 2 when
+      ``method="both"`` (both hierarchical and kmeans are fit and the best display
+      map kept). Under-counting manufactures false significance, so the count is
+      assembled explicitly in :func:`_dsr_trial_count` and guarded by the
       regression suite.
 
 Importing this module has no side effects.
@@ -110,16 +122,20 @@ class ClusterAnalysis:
         The gap-statistic selection record when ``k`` was chosen automatically;
         ``None`` for a fixed ``k``.
     n_clusters:
-        The number of clusters in the frozen labeling.
+        The number of clusters in the DISPLAY labeling.
     selection_method:
-        ``"fixed"`` or the gap selection rule (e.g. ``"tibshirani_1se"``).
+        ``"fixed"`` or the gap selection rule (e.g. ``"tibshirani_1se"``). When
+        ``method="both"`` a ``"+both(won=...)"`` suffix records that both clustering
+        families ran and which one supplied the canonical display map.
     silhouette, modularity:
         Post-hoc cluster-quality scalars.
     ari_vs_gics:
         Post-hoc ARI between clusters and GICS sectors (``None`` when no GICS map
         was supplied). GICS NEVER enters the distance or ``k``-selection.
     diversification:
-        The honest 1/N-vs-cluster horse race, or ``None`` when not requested.
+        The honest 1/N-vs-cluster horse race (clusters RE-FIT per walk-forward
+        train window — never the full-panel display labels), or ``None`` when not
+        requested.
     stability:
         The rolling-window stability record, or ``None`` when not requested.
     verdict:
@@ -223,11 +239,13 @@ def _dsr_trial_count(
 ) -> int:
     r"""The FULL DSR trial count = product of every swept axis.
 
-    ``n_trials = #linkages x #k-candidates x #weighting-schemes x
-    #denoise-settings x #cost-grid-points``. Each factor is floored at ``1`` so the
-    product is always ``>= 1``; the regression suite asserts the returned count is
-    never *less* than the product of the axes the pipeline actually swept (under-
-    counting manufactures false significance).
+    ``n_trials = #clustering-families x #k-candidates x #weighting-schemes x
+    #denoise-settings x #cost-grid-points``. The first factor (``n_linkages``)
+    counts the clustering FAMILIES actually fit and compared (2 when
+    ``method="both"`` runs hierarchical AND kmeans, else 1). Each factor is floored
+    at ``1`` so the product is always ``>= 1``; the regression suite asserts the
+    returned count is never *less* than the product of the axes the pipeline
+    actually swept (under-counting manufactures false significance).
     """
     factors = (
         max(1, int(n_linkages)),
@@ -249,7 +267,20 @@ def _cluster_universe(
     """Fit correlation -> (denoise) -> Mantegna distance -> select ``k`` -> cluster.
 
     Returns ``(cluster_result, correlation, distance, gap_result, selection_method)``.
-    All fitting is on the supplied (train) panel; the labels are frozen on return.
+
+    All fitting here is on the supplied (FULL) panel; this DISPLAY map drives the
+    descriptive figures (heatmap/dendrogram/MST/embedding) and the post-hoc
+    ARI-vs-GICS diagnostic ONLY. The diversification horse race never reuses these
+    labels OOS — it re-fits clusters inside each walk-forward train window (see
+    :func:`_run_diversification`).
+
+    ``method`` selects the clustering family:
+
+    - ``"hierarchical"`` — agglomerative linkage on the Mantegna distance.
+    - ``"kmeans"`` — K-means on the RMT-signal embedding.
+    - ``"both"`` (default) — run BOTH and keep the higher-silhouette map as the
+      canonical DISPLAY labeling; ``selection_method`` records that both ran and
+      which family won.
     """
 
     from stockclusters.clustering.embedding import rmt_signal_embedding
@@ -288,11 +319,32 @@ def _cluster_universe(
         k = int(gap_result.k_selected)
         selection_method = gap_result.selection_rule
 
-    if params.method == "kmeans":
+    def _fit_hierarchical() -> ClusterResult:
+        return hierarchical_clusters(dist, n_clusters=k, method=params.linkage)
+
+    def _fit_kmeans() -> ClusterResult:
         embedding = rmt_signal_embedding(corr, n_obs=n_obs)
-        result = kmeans_clusters(embedding, n_clusters=k, seed=int(params.seed))
+        return kmeans_clusters(embedding, n_clusters=k, seed=int(params.seed))
+
+    def _sil(value: float) -> float:
+        import math
+
+        return value if math.isfinite(value) else float("-inf")
+
+    if params.method == "kmeans":
+        result = _fit_kmeans()
+    elif params.method == "both":
+        # Run BOTH families and keep the higher-silhouette map as the canonical
+        # DISPLAY labeling. Both are real trials the DSR multiplicity must count.
+        hier = _fit_hierarchical()
+        kmn = _fit_kmeans()
+        if _sil(kmn.silhouette) > _sil(hier.silhouette):
+            result, won = kmn, "kmeans"
+        else:
+            result, won = hier, "hierarchical"
+        selection_method = f"{selection_method}+both(won={won})"
     else:
-        result = hierarchical_clusters(dist, n_clusters=k, method=params.linkage)
+        result = _fit_hierarchical()
 
     return result, corr, dist, gap_result, selection_method
 
@@ -313,17 +365,21 @@ def run_cluster_analysis(
 
     Pipeline::
 
+        # DISPLAY map (full-panel, descriptive — NOT a backtest):
         correlation -> (RMT denoise) -> Mantegna distance -> gap/fixed k
         -> cluster -> MST + embedding + post-hoc metrics
-        -> [optional] rolling stability (adjacent-window ARI)
+        -> [optional] rolling stability (adjacent-window ARI; per-window re-fit)
+        # Backtest (TRAIN-ONLY cluster re-fit per walk-forward window):
         -> [optional] 1/N vs cluster-aware OOS horse race (Memmel-JK + DSR)
         -> [optional] pure-function headline verdict
 
     Parameters
     ----------
     returns:
-        A wide panel of asset returns (rows = time, columns = asset). Fitting is on
-        this (train) panel; labels are frozen before any OOS application.
+        A wide panel of asset returns (rows = time, columns = asset). The DISPLAY
+        cluster map is fit on this FULL panel for descriptive figures and the
+        post-hoc ARI-vs-GICS diagnostic ONLY; the diversification horse race never
+        reuses it OOS — it re-fits clusters inside each walk-forward train window.
     params:
         The :class:`ClusterAnalysisParams` bundle (defaults to library defaults).
     gics:
@@ -365,10 +421,17 @@ def run_cluster_analysis(
         ari_gics = ari_vs_gics(result.labels, gics)
 
     # --- DSR trial count: the FULL product of every swept axis ----------------
-    # #linkages: the pipeline runs ONE linkage but the gap selector evaluates k
-    # over the candidate grid; both axes are honestly counted.
+    # Axes actually swept for the reported diversification result:
+    #   * clustering families: 2 when method=="both" (hierarchical AND kmeans both
+    #     run and the best DISPLAY map is selected by silhouette), else 1;
+    #   * k-candidates: the gap selector evaluates every k in the candidate grid;
+    #   * weighting schemes: the OOS race selects the best of cluster-EW /
+    #     stripped-HRP (folded in by _dsr_trial_count's default);
+    #   * denoise settings / cost-grid points: the pipeline reports a single
+    #     setting of each, so both axes are 1 here.
     n_k = 1 if gap_result is None else len(gap_result.k_candidates)
-    n_trials = _dsr_trial_count(n_linkages=1, n_k_candidates=n_k)
+    n_families = 2 if params.method == "both" else 1
+    n_trials = _dsr_trial_count(n_linkages=n_families, n_k_candidates=n_k)
 
     diversification = None
     verdict = None
@@ -430,9 +493,32 @@ def _run_diversification(
     params: ClusterAnalysisParams,
     n_trials: int,
 ) -> tuple[DiversificationResult, ClusteringVerdict]:
-    """Run the honest horse race + derive the pure-function verdict."""
-    from stockclusters.allocation.schemes import run_diversification
+    """Run the honest horse race (TRAIN-ONLY cluster re-fit) + derive the verdict.
+
+    The OOS horse race does NOT reuse ``result.labels`` (which were fit on the FULL
+    panel — fine for display, leaky as a backtest). Instead it builds a per-window
+    clusterer that RE-FITS the correlation -> RMT -> distance -> cut pipeline inside
+    each walk-forward train window, applying those train-only labels to the next OOS
+    window with purge + embargo + ``shift(1)``. The clustering FAMILY (kmeans vs
+    hierarchical) matches the canonical display map; ``k`` is pinned to
+    ``result.n_clusters``.
+    """
+    from stockclusters.allocation.schemes import (
+        _default_window_clusterer,
+        run_diversification,
+    )
     from stockclusters.evaluation.verdict import derive_clustering_verdict
+
+    # The family that drives the OOS race matches the canonical display labeling:
+    # for method=="both" the winner is recorded in result.method.
+    family = "kmeans" if str(result.method).startswith("kmeans") else "hierarchical"
+    window_clusterer = _default_window_clusterer(
+        n_clusters=int(result.n_clusters),
+        method=params.linkage,
+        denoise=bool(params.denoise),
+        family=family,
+        seed=int(params.seed),
+    )
 
     diversification = run_diversification(
         returns,
@@ -443,6 +529,7 @@ def _run_diversification(
         rebalance=params.rebalance,
         embargo=int(params.embargo_days),
         purge=int(params.embargo_days),
+        clusterer=window_clusterer,
     )
     verdict = derive_clustering_verdict(
         diversification.memmel_jk_pvalue,

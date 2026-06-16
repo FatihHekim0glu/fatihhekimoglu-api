@@ -19,6 +19,7 @@ Importing this module has no side effects.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -35,6 +36,12 @@ __all__ = [
     "run_diversification",
     "stripped_hrp_weights",
 ]
+
+#: A window clusterer maps a single in-sample returns window to an integer-label
+#: Series indexed by asset. The diversification horse race RE-FITS clusters inside
+#: every walk-forward TRAIN window via this callable, so the labels applied to an
+#: OOS window are a function of that window's in-sample data ONLY (no look-ahead).
+WindowClusterer = Callable[[pd.DataFrame], "pd.Series"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,31 +256,45 @@ def run_diversification(
     rebalance: str = "monthly",
     embargo: int = 1,
     purge: int = 1,
+    clusterer: WindowClusterer | None = None,
 ) -> DiversificationResult:
     r"""Run the honest 1/N vs cluster-aware OOS horse race and fill the result.
 
     Backtests the three strategies (1/N, cluster-EW, stripped-HRP) through the
-    SAME no-lookahead walk-forward engine — frozen ``labels`` are reused on every
-    rebalance, and each window's covariance is estimated from the in-sample data
-    only — then runs the inference layer on the comparison.
+    SAME no-lookahead walk-forward engine, then runs the inference layer on the
+    comparison.
+
+    TRAIN-ONLY CLUSTER FIT (no look-ahead): the cluster-aware arms do NOT reuse a
+    full-panel labeling. On every rebalance the supplied ``clusterer`` RE-FITS the
+    correlation -> RMT -> distance -> cut pipeline on that rebalance's in-sample
+    window ALONE, and the resulting labels are applied to the subsequent OOS window
+    via the engine's ``shift(1)``. Post-cutoff returns therefore cannot shape the
+    in-sample clusters of any OOS window. When ``clusterer is None`` the per-window
+    re-fit falls back to the standard hierarchical pipeline at the same ``k`` as the
+    supplied ``labels`` (count + denoise inferred from ``labels``); the ``labels``
+    argument then serves only to pin ``k`` and the asset universe, NOT to assign
+    OOS weights.
 
     IDENTICAL-INDEX REQUIREMENT: all three net OOS return series are asserted to
     share the EXACT same post-purge/embargo date index BEFORE the Jobson-Korkie-
     Memmel test is computed. A mismatch is a leakage/alignment bug and raises.
 
     DSR HONESTY: ``n_trials`` is supplied by the caller as the FULL product of the
-    swept axes (``#linkages x #k-candidates x #weighting-schemes x #denoise-settings
-    x #cost-grid-points``); the deflated Sharpe deflates the *selected* (best
-    cluster-aware) strategy against that full multiplicity. Under-counting
-    manufactures false significance and is guarded against in the regression suite.
+    swept axes (``#linkage-families x #k-candidates x #weighting-schemes x
+    #denoise-settings x #cost-grid-points``); the deflated Sharpe deflates the
+    *selected* (best cluster-aware) strategy against that full multiplicity.
+    Under-counting manufactures false significance and is guarded against in the
+    regression suite.
 
     Parameters
     ----------
     returns:
         A wide panel of asset returns (rows = time, columns = asset).
     labels:
-        Frozen integer cluster labels indexed by asset ticker (fit on TRAIN data
-        upstream, never re-fit per OOS window here).
+        Integer cluster labels indexed by asset ticker. Used to pin the number of
+        clusters ``k`` and the asset universe for the per-window re-fit; the label
+        VALUES are NOT applied to OOS windows (each OOS window's labels are re-fit
+        on its own train data by ``clusterer``).
     lookback_window:
         The in-sample window length for each rebalance.
     n_trials:
@@ -284,6 +305,11 @@ def run_diversification(
         Rebalance cadence (``"monthly"`` or ``"quarterly"``).
     embargo, purge:
         No-lookahead gap parameters passed to the walk-forward engine.
+    clusterer:
+        Per-window clusterer mapping an in-sample window to a label Series. When
+        ``None`` a default hierarchical re-fit at ``k = labels.nunique()`` is used.
+        This is the mechanism that keeps the OOS race TRAIN-ONLY: it sees only the
+        window passed to it.
 
     Returns
     -------
@@ -311,16 +337,25 @@ def run_diversification(
     frozen_labels = labels.astype(int)
     assets = list(frozen_labels.index)
 
-    # --- Build the three allocators (frozen labels; window-local covariance) ---
+    # Per-window clusterer: re-fits clusters on EACH train window only. Falls back
+    # to a standard hierarchical re-fit at the same k as the supplied labels.
+    fit_window = clusterer or _default_window_clusterer(n_clusters=int(frozen_labels.nunique()))
+
+    def _window_labels(window: pd.DataFrame) -> pd.Series:
+        """Re-fit cluster labels on this train window, reindexed to its columns."""
+        labelled = fit_window(window).astype(int)
+        return labelled.reindex(window.columns).dropna().astype(int)
+
+    # --- Build the three allocators (TRAIN-ONLY labels; window-local covariance) -
     def _alloc_one_over_n(window: pd.DataFrame) -> pd.Series:
         return one_over_n_weights(list(window.columns))
 
     def _alloc_cluster_ew(window: pd.DataFrame) -> pd.Series:
-        sub = frozen_labels.reindex(window.columns).dropna().astype(int)
+        sub = _window_labels(window)
         return cluster_equal_weight(sub).reindex(window.columns).fillna(0.0)
 
     def _alloc_stripped_hrp(window: pd.DataFrame) -> pd.Series:
-        sub = frozen_labels.reindex(window.columns).dropna().astype(int)
+        sub = _window_labels(window)
         cov = ledoit_wolf_cov(window[list(sub.index)])
         return stripped_hrp_weights(sub, cov).reindex(window.columns).fillna(0.0)
 
@@ -433,6 +468,51 @@ def run_diversification(
             },
         },
     )
+
+
+def _default_window_clusterer(
+    *,
+    n_clusters: int,
+    method: str = "average",
+    denoise: bool = True,
+    family: str = "hierarchical",
+    seed: int = 0,
+) -> WindowClusterer:
+    """Build the standard per-window clusterer (lazy pipeline import).
+
+    NO-LOOKAHEAD: the returned callable sees only the window passed to it; it
+    estimates the correlation, optionally RMT-denoises it, and cuts ``n_clusters``
+    clusters within that window — either by hierarchical linkage on the Mantegna
+    distance (``family="hierarchical"``) or by K-means on the RMT-signal embedding
+    (``family="kmeans"``). Mirrors
+    :func:`stockclusters.stability.resample._default_clusterer` so the
+    diversification and stability code paths re-fit clusters identically.
+    """
+
+    def _cluster(window: pd.DataFrame) -> pd.Series:
+        from stockclusters.correlation.estimate import correlation_matrix
+        from stockclusters.correlation.rmt import marchenko_pastur_clip
+
+        n_obs = int(window.shape[0])
+        corr = correlation_matrix(window)
+        if denoise:
+            corr = marchenko_pastur_clip(corr, n_obs=n_obs)
+        k = max(1, min(int(n_clusters), int(window.shape[1])))
+
+        if family == "kmeans":
+            from stockclusters.clustering.embedding import rmt_signal_embedding
+            from stockclusters.clustering.kmeans import kmeans_clusters
+
+            embedding = rmt_signal_embedding(corr, n_obs=n_obs)
+            return kmeans_clusters(embedding, n_clusters=k, seed=int(seed)).labels
+
+        from stockclusters.clustering.hierarchical import hierarchical_clusters
+        from stockclusters.correlation.distance import mantegna_distance
+
+        dist = mantegna_distance(corr)
+        return hierarchical_clusters(dist, n_clusters=k, method=method).labels
+
+    return _cluster
 
 
 def _nan_safe(value: float) -> float:
