@@ -24,6 +24,7 @@ from .routers import (
     eigen_portfolios,
     factorlab,
     hrp_portfolio,
+    lendingclub_default,
     ma_crossover_backtest,
     markowitz_optimizer,
     pairs_trading,
@@ -82,3 +83,4 @@ app.include_router(stock_price_forecast.router)
 app.include_router(eigen_portfolios.router)
 app.include_router(hrp_portfolio.router)
 app.include_router(stock_clusters.router)
+app.include_router(lendingclub_default.router)
