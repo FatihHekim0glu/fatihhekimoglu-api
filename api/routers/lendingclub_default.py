@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import re
 from pathlib import Path
 from typing import Any, Literal
 
@@ -232,6 +233,26 @@ class LendingClubRequest(BaseModel):
         description="Income verification: 'Verified'/'Source Verified'/'Not Verified'.",
     )
     addr_state: str = Field("CA", description="Two-letter US state code.")
+
+    @field_validator("emp_length", mode="before")
+    @classmethod
+    def _parse_emp_length(cls, v: object) -> float:
+        # Accept the native LendingClub strings ("< 1 year", "10+ years",
+        # "3 years") that the frontend dropdown and the real accepted.csv emit,
+        # as well as a plain numeric year count. Mirrors the library's
+        # data.load._parse_emp_length so the API encoding matches the model's
+        # training distribution ("< 1 year" -> 0, "10+ years" -> 10, "n" -> n).
+        if isinstance(v, str):
+            s = v.strip().lower()
+            if s.startswith("< 1") or s == "":
+                return 0.0
+            if s.startswith("10+"):
+                return 10.0
+            match = re.search(r"\d+(?:\.\d+)?", s)
+            if match is None:
+                raise ValueError(f"unrecognized emp_length: {v!r}")
+            return float(match.group())
+        return float(v)  # type: ignore[arg-type]
 
     @field_validator("grade")
     @classmethod
