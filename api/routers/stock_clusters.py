@@ -338,11 +338,17 @@ def _load_returns_via_provider(
 
     try:
         tickers, is_pit = _resolve_universe_tickers(req, provider, supabase)
-    except ValueError:
-        # sp500_pit on a fallback provider, or an empty membership: degrade to the
-        # seeded synthetic panel built off the request's custom ticker list.
-        df, src = _load_returns_synthetic(req)
-        return df, src, False
+    except Exception:  # noqa: BLE001 — PIT universe resolution is best-effort
+        # sp500_pit membership build failed (fallback provider, empty membership, or
+        # a Polygon auth/rate-limit/403 on the grouped-daily endpoint). Per-ticker
+        # aggregates still work, so degrade to the request's custom ticker list on the
+        # real provider (survivor-only) rather than blanking out or 502-ing. The final
+        # synthetic safety net below still applies if even that yields <2 series.
+        logger.warning(
+            "sp500_pit universe resolution failed; degrading to custom ticker list",
+            exc_info=True,
+        )
+        tickers, is_pit = _parse_ticker_list(req.tickers), False
 
     try:
         start = _date.fromisoformat(req.start)
