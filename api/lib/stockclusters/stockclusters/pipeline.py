@@ -574,10 +574,29 @@ def assemble_figures(analysis: ClusterAnalysis) -> dict[str, dict[str, Any] | No
         "stability_figure": None,
     }
 
-    if analysis.cluster_result.linkage is not None:
-        figures["dendrogram_figure"] = dendrogram_figure(
-            analysis.cluster_result.linkage, [str(a) for a in labels.index]
-        )
+    # The dendrogram visualizes the hierarchical linkage tree. When the headline
+    # family is k-means (method="kmeans", or method="both" where k-means won the
+    # silhouette contest) the display ClusterResult carries no linkage — but the
+    # dendrogram is a structural diagnostic of the SAME correlation hierarchy and
+    # should still render. Fall back to an average-linkage tree on the display
+    # distance matrix so the figure is never empty.
+    dendro_linkage = analysis.cluster_result.linkage
+    dendro_labels = [str(a) for a in labels.index]
+    if dendro_linkage is None:
+        from stockclusters.clustering.hierarchical import hierarchical_clusters
+
+        try:
+            hres = hierarchical_clusters(
+                analysis.distance,
+                n_clusters=int(labels.nunique()),
+                method="average",
+            )
+            dendro_linkage = hres.linkage
+            dendro_labels = [str(a) for a in analysis.distance.index]
+        except Exception:  # dendrogram is best-effort, never fatal
+            dendro_linkage = None
+    if dendro_linkage is not None:
+        figures["dendrogram_figure"] = dendrogram_figure(dendro_linkage, dendro_labels)
 
     if analysis.embedding is not None:
         figures["embedding_figure"] = embedding_scatter_figure(analysis.embedding, labels)
