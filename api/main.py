@@ -27,6 +27,7 @@ from .routers import (
     ma_crossover_backtest,
     markowitz_optimizer,
     pairs_trading,
+    stock_clusters,
     stock_dashboard,
     stock_price_forecast,
 )
@@ -80,3 +81,4 @@ app.include_router(ma_crossover_backtest.router)
 app.include_router(stock_price_forecast.router)
 app.include_router(eigen_portfolios.router)
 app.include_router(hrp_portfolio.router)
+app.include_router(stock_clusters.router)
