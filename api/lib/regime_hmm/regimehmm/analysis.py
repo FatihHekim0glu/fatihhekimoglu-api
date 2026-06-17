@@ -333,7 +333,20 @@ def run_regime_analysis(
     #    ONLINE FILTER labels the upcoming OOS window, and the decided exposure is
     #    applied via the engine's shift(1) on the IDENTICAL post-purge/embargo OOS
     #    index. The reported overlay/buyhold Sharpes are therefore truly OOS.
-    lookback = _oos_lookback_window(len(aligned_returns))
+    n_obs = len(aligned_returns)
+    lookback = _oos_lookback_window(n_obs)
+    # Synchronous-endpoint budget: bound the walk-forward to the most recent ~10
+    # quarterly OOS folds by raising the anchored train floor. Each fold refits the
+    # HMM, and the scale-to-zero shared-CPU VM is several times slower than a dev
+    # box, so an unbounded multi-year OOS span (20+ folds) blows the request budget.
+    # This stays genuinely OOS (train-only per fold, online-filter labels, identical
+    # purged/embargoed index) — it just scores the recent OOS window; the full-span
+    # walk-forward remains available via the CLI / library.
+    max_sync_oos_folds = 10
+    cap_lookback = n_obs - max_sync_oos_folds * PERIODS_PER_QUARTER
+    lookback = max(lookback, cap_lookback)
+    lookback = min(lookback, n_obs - 2 * PERIODS_PER_QUARTER - 2)  # keep >=2 OOS folds
+    lookback = max(lookback, 60)
     wf = walk_forward_regime_overlay(
         aligned_returns,
         feature_set=feature_set,
@@ -350,9 +363,12 @@ def run_regime_analysis(
         # keep a synchronous request responsive on the scale-to-zero VM. This does
         # NOT touch OOS integrity — each fold is still train-only fit + online-filter
         # labels on the identical purged/embargoed OOS index; only the EM search
-        # depth per fold is trimmed. EM early-stops on convergence well before 20.
+        # depth + per-fold train window are trimmed. The scale-to-zero shared-CPU
+        # VM is several times slower than a dev box, so fit_window_cap is held to
+        # ~6 months and max_iter to 12 (EM early-stops on convergence well before).
         n_restarts=1,
-        max_iter=20,
+        max_iter=12,
+        fit_window_cap=126,
     )
     overlay = wf.overlay
 
