@@ -261,7 +261,7 @@ def run_vol_forecast(
     seed: int = 7,
     rv_estimator: str = "garman_klass",
     train_window: int = 504,
-    step: int = 1,
+    step: int = 21,
     gap: int = 1,
     anchored: bool = True,
     data_source: str = "synthetic",
@@ -333,11 +333,19 @@ def run_vol_forecast(
 
     model_tuple: tuple[str, ...] = tuple(str(m) for m in models) if models else DEFAULT_MODELS
 
+    # Refit stride must be >= the horizon so consecutive OOS test slices never
+    # overlap (a step < horizon double-counts overlapping windows in the DM/SPA
+    # tests) AND so the per-fold GARCH MLE refit count stays bounded — a daily
+    # refit (step=1) over a multi-year span is ~500 GARCH fits and blows the
+    # synchronous request budget. Monthly refits keep the walk-forward genuinely
+    # OOS while finishing in seconds.
+    effective_step = max(int(step), int(horizon))
+
     config = WalkForwardConfig(
         horizon=int(horizon),
         train_window=int(train_window),
         gap=int(gap),
-        step=int(step),
+        step=effective_step,
         anchored=bool(anchored),
         models=model_tuple,
         seed=int(seed),
