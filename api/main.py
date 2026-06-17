@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import __version__
 from .config import settings
 from .routers import (
+    anomaly_detector,
     crypto_arb_scanner,
     eigen_portfolios,
     factorlab,
@@ -88,3 +89,4 @@ app.include_router(regime_hmm.router)
 app.include_router(stock_clusters.router)
 app.include_router(lendingclub_default.router)
 app.include_router(crypto_arb_scanner.router)
+app.include_router(anomaly_detector.router)
