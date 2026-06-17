@@ -108,6 +108,7 @@ def train_synthetic_mlp(
         assert_no_leakage,
         build_features,
         quote_date_group_split,
+        realized_vol_for_chain,
     )
     from nnvsbs.models.mlp import (
         MLPConfig,
@@ -124,8 +125,13 @@ def train_synthetic_mlp(
     chain = generate_synthetic_chain(n_quotes=n_quotes, seed=seed)
     frame = chain.frame
 
-    # 2. Non-circular features (IV NEVER enters) + the leakage-free quote-date split.
-    features = build_features(frame)
+    # 2. Non-circular features + the leakage-free quote-date split. The NN's
+    # ``realized_vol`` feature is a single scalar from the UNDERLYING's return history
+    # (here a seeded GBM path at the chain's constant level) — NEVER the per-contract
+    # option implied vol. The positive allowlist guard rejects any non-permitted
+    # column, so a renamed-IV leak cannot pass.
+    realized_vol = realized_vol_for_chain(frame, seed=seed)
+    features = build_features(frame, realized_vol=realized_vol)
     assert_no_leakage(features)
     train_idx, test_idx = quote_date_group_split(frame["quote_date"])
 

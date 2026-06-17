@@ -240,7 +240,14 @@ def _normalize_leg(
     last = leg.get("lastPrice", pd.Series(dtype="float64"))
     mid = _mid_price(bid, ask, last)
 
-    sigma = leg.get("impliedVolatility", pd.Series(index=leg.index, dtype="float64"))
+    # The per-contract implied volatility (the SMILE). It is carried purely as
+    # ANALYSIS METADATA — for drawing the smile and as the constant-vol BS reference
+    # — and is NEVER a model feature: IV is a Black-Scholes inversion of the target
+    # mid price, so feeding it per-contract would leak the label. The leakage guard
+    # (a positive allowlist) and the feature builder both enforce this downstream;
+    # ``build_features`` derives the NN's ``realized_vol`` from the UNDERLYING's
+    # return history, not from this column.
+    implied_vol = leg.get("impliedVolatility", pd.Series(index=leg.index, dtype="float64"))
 
     block = pd.DataFrame(
         {
@@ -250,7 +257,9 @@ def _normalize_leg(
             "T": float(t_years),
             "r": float(r),
             "q": float(q),
-            "sigma": pd.to_numeric(sigma, errors="coerce").astype("float64"),
+            # ``sigma`` here is the per-contract option IMPLIED VOL (smile) — analysis
+            # metadata / the constant-vol BS reference ONLY, never an NN input.
+            "sigma": pd.to_numeric(implied_vol, errors="coerce").astype("float64"),
             "kind": kind,
             "price": pd.to_numeric(mid, errors="coerce").astype("float64"),
         }

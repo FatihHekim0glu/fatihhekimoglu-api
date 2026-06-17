@@ -206,8 +206,18 @@ def run_compare(
 
         frame, data_source = load_option_chain(ticker)
 
-    # 2. Non-circular features (IV NEVER enters) + the leakage-free quote-date split.
-    features = build_features(frame)
+    # 2. Non-circular features + the leakage-free quote-date split.
+    #
+    # The NN's ``realized_vol`` feature is a single scalar from the UNDERLYING's
+    # return history (synthetic: a seeded GBM path at the chain's constant level;
+    # real: the underlying's historical returns) — NEVER the per-contract option
+    # implied vol (the ``sigma`` smile, which inverts the target price). The positive
+    # allowlist guard then rejects any non-permitted column (a renamed-IV leak can't
+    # pass). IV is an analysis OUTPUT only (the smile + the constant-vol BS reference).
+    from nnvsbs.features.build import realized_vol_for_chain
+
+    realized_vol = realized_vol_for_chain(frame, seed=seed)
+    features = build_features(frame, realized_vol=realized_vol)
     assert_no_leakage(features)
     # The split's TRAIN fold is the model's fitting window (offline); the serve path
     # reports OUT-OF-SAMPLE reprice error on the TEST fold only (strictly future of
@@ -220,7 +230,12 @@ def run_compare(
     target = test_frame["price"].to_numpy(dtype="float64")
     moneyness = test_features["moneyness"].to_numpy(dtype="float64")
 
-    # 3a. Black-Scholes reprice (the hand-rolled closed form, per contract kind).
+    # 3a. Black-Scholes reprice (the hand-rolled closed form, per contract kind), at a
+    # SINGLE CONSTANT vol. On synthetic data ``sigma`` is already constant, so this is
+    # the data-generating vol. On real chains we deliberately use one constant level
+    # (the median smile IV) rather than each contract's OWN implied vol — pricing each
+    # contract at its own IV would reprice the market exactly and erase the very smile
+    # mispricing the study measures. This constant-vol BS is the honest baseline.
     bs_pred = _bs_prices_for_chain(test_frame, bs_price)
 
     # 3b. Neural-net reprice via the committed ONNX artifact (onnxruntime ONLY).
@@ -291,8 +306,13 @@ def _bs_prices_for_chain(
     """Price every contract in ``frame`` with the hand-rolled Black-Scholes kernel.
 
     Prices calls and puts in their own vectorized batches (``kind`` is per-row) and
-    returns one BS price per row, aligned with ``frame``. The ``sigma`` column is the
-    chain's quoting volatility (the constant-vol BS reference the NN is compared to).
+    returns one BS price per row, aligned with ``frame``, at a SINGLE CONSTANT
+    volatility — the honest constant-vol Black-Scholes baseline. The level is the
+    median of the chain's ``sigma`` column: on synthetic data every ``sigma`` is the
+    same data-generating vol (so the median is exact); on real chains ``sigma`` is the
+    per-contract smile IV and the median is a representative constant level. Using one
+    constant vol (rather than each contract's own IV, which would reprice the market
+    exactly) is what exposes the smile mispricing the study reports.
 
     Parameters
     ----------
@@ -311,7 +331,11 @@ def _bs_prices_for_chain(
     expiry = frame["T"].to_numpy(dtype="float64")
     rate = frame["r"].to_numpy(dtype="float64")
     div = frame["q"].to_numpy(dtype="float64")
-    sigma = frame["sigma"].to_numpy(dtype="float64")
+    # SINGLE constant vol for the BS baseline (median of the smile / generating level).
+    sigma_col = frame["sigma"].to_numpy(dtype="float64")
+    finite = sigma_col[np.isfinite(sigma_col) & (sigma_col > 0.0)]
+    const_vol = float(np.median(finite)) if finite.size else float(np.nanmedian(sigma_col))
+    sigma = np.full(spot.shape[0], const_vol, dtype="float64")
     kinds = frame["kind"].to_numpy()
 
     prices = np.empty(spot.shape[0], dtype="float64")

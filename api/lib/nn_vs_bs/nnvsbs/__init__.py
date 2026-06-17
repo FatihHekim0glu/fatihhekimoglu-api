@@ -66,11 +66,13 @@ from nnvsbs.evaluation.verdict import (
     derive_verdict,
 )
 from nnvsbs.features.build import (
+    ALLOWED_FEATURE_COLUMNS,
     FEATURE_COLUMNS,
-    FORBIDDEN_FEATURE_COLUMNS,
+    KNOWN_LEAKY_COLUMNS,
     assert_no_leakage,
     build_features,
     quote_date_group_split,
+    realized_vol_for_chain,
 )
 from nnvsbs.models.mlp import (
     MLPConfig,
@@ -97,10 +99,11 @@ __version__ = "0.1.0"
 # Curated public API. Sorted (ruff RUF022) rather than grouped; the import block
 # above is organized by subpackage for readers who want the logical grouping.
 __all__ = [
+    "ALLOWED_FEATURE_COLUMNS",
     "CHAIN_COLUMNS",
     "EPS",
     "FEATURE_COLUMNS",
-    "FORBIDDEN_FEATURE_COLUMNS",
+    "KNOWN_LEAKY_COLUMNS",
     "PERIODS_PER_YEAR",
     "TRADING_DAYS",
     "ArtifactError",
@@ -145,6 +148,7 @@ __all__ = [
     "load_option_chain",
     "make_rng",
     "quote_date_group_split",
+    "realized_vol_for_chain",
     "reprice_errors",
     "reprice_errors_by_moneyness",
     "run_compare",
