@@ -45,6 +45,9 @@ dependencies = [
     "cvxpy>=1.5,<2.0",
     # vendored from lendingclub-default (scikit-learn already pinned above; no shap/[all])
     "xgboost>=2.0",
+    # vendored from crypto-arb-scanner (lean [data]; NO ccxt[all]). ccxt is imported
+    # lazily inside the handler; any upstream failure degrades to synthetic.
+    "ccxt>=4",
 ]
 
 [project.optional-dependencies]
@@ -94,6 +97,8 @@ module = [
     "xgboost.*",
     "joblib.*",
     "lendingclub_default.*",
+    "cryptoarb.*",
+    "ccxt.*",
 ]
 ignore_missing_imports = true
 

@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import __version__
 from .config import settings
 from .routers import (
+    crypto_arb_scanner,
     eigen_portfolios,
     factorlab,
     hrp_portfolio,
@@ -84,3 +85,4 @@ app.include_router(eigen_portfolios.router)
 app.include_router(hrp_portfolio.router)
 app.include_router(stock_clusters.router)
 app.include_router(lendingclub_default.router)
+app.include_router(crypto_arb_scanner.router)
