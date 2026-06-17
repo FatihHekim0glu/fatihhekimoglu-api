@@ -24,12 +24,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 
 from regimehmm._typing import FloatArray
+
+if TYPE_CHECKING:
+    from regimehmm.regimes.characterize import RegimeCharacterization
 
 
 @dataclass(frozen=True, slots=True)
@@ -516,4 +519,376 @@ def walk_forward_overlay(
         cost_bps=float(cost_bps),
         turnover=float(overlay_bt.turnover.sum()),
         meta=meta,
+    )
+
+
+def select_risk_off_state(characterization: RegimeCharacterization) -> int:
+    """Return the canonical index of the HIGHEST-VOLATILITY (risk-off) regime.
+
+    The overlay must reduce exposure in the genuine high-vol regime, NOT in a
+    positionally-chosen state. After canonicalization (ascending mean return,
+    vol tie-break) the LAST state is the highest-MEAN-RETURN regime — which is
+    emphatically not the same as the highest-vol regime. This helper picks the
+    risk-off state from the per-regime CHARACTERIZATION by ``argmax`` of the
+    conditional volatility, so the overlay always cuts exposure in the regime
+    that actually carries the most risk.
+
+    Parameters
+    ----------
+    characterization:
+        The :class:`~regimehmm.regimes.characterize.RegimeCharacterization`
+        whose per-regime ``volatility`` selects the risk-off state.
+
+    Returns
+    -------
+    int
+        The canonical state index with the maximum conditional volatility. NaN
+        volatilities (a regime the decoder never visited, so its vol is
+        undefined) are treated as ``-inf`` so a populated regime always wins;
+        if every regime is unvisited the lowest index is returned.
+
+    Raises
+    ------
+    ValidationError
+        If the characterization carries no regime statistics.
+    """
+    from regimehmm._exceptions import ValidationError
+
+    stats = characterization.stats
+    if not stats:
+        raise ValidationError("select_risk_off_state: characterization has no regime stats.")
+
+    def _vol_key(value: float) -> float:
+        # An unvisited regime has undefined (NaN) volatility; rank it last so a
+        # genuinely populated, high-vol regime is always preferred.
+        return value if np.isfinite(value) else float("-inf")
+
+    best_idx = 0
+    best_vol = _vol_key(float(stats[0].volatility))
+    for s in stats[1:]:
+        vol = _vol_key(float(s.volatility))
+        if vol > best_vol:
+            best_vol = vol
+            best_idx = int(s.state)
+    return int(best_idx)
+
+
+@dataclass(frozen=True, slots=True)
+class WalkForwardRegimeResult:
+    """Genuinely-OOS regime overlay vs buy-and-hold, plus per-fold OOS labels.
+
+    Bundles the anchored walk-forward :class:`OverlayResult` (overlay and
+    buy-and-hold scored on the IDENTICAL post-purge/embargo OOS index) with the
+    per-observation ONLINE-FILTER (no-lookahead) regime labels decoded fold by
+    fold on the OOS window. Unlike :func:`walk_forward_overlay`, the scaler + HMM
+    are refit on each fold's TRAIN window only, so neither the labels nor the
+    overlay returns ever see future data.
+
+    Attributes
+    ----------
+    overlay:
+        The overlay-vs-buy-and-hold :class:`OverlayResult` on the engine's OOS
+        index.
+    oos_labels:
+        The ``(n_oos,)`` canonical online-filter regime labels aligned to
+        ``overlay.overlay_returns`` (each decoded with a train-only fit).
+    oos_index:
+        The shared OOS index both legs and ``oos_labels`` align to.
+    """
+
+    overlay: OverlayResult
+    oos_labels: pd.Series
+    oos_index: pd.Index
+
+
+def _fit_filter_exposure_for_window(
+    train_returns: pd.Series,
+    eval_returns: pd.Series,
+    *,
+    feature_set: str,
+    n_states: int,
+    seed: int,
+    n_restarts: int = 2,
+    max_iter: int = 40,
+) -> tuple[pd.Series, pd.Series]:
+    """Fit scaler + HMM TRAIN-ONLY, online-filter the eval window, return exposure + labels.
+
+    Builds causal features on ``train_returns``, fits the standardizer and the
+    Gaussian HMM on the TRAIN window ONLY, canonicalizes, then runs the ONLINE
+    FILTER over the ``eval_returns`` window (features rebuilt with a short trailing
+    prefix so trailing-window features are well-defined, but the SCALER and MODEL
+    are the train-only ones). Risk-off is the highest-volatility regime selected
+    from the train characterization (never positionally). Returns the per-eval-bar
+    target exposure (pre-shift) and the per-eval-bar canonical online-filter labels,
+    both indexed by ``eval_returns.index``.
+    """
+    import numpy as _np
+
+    from regimehmm.data import build_features
+    from regimehmm.hmm.em import fit_hmm
+    from regimehmm.hmm.filter import online_filter
+    from regimehmm.regimes.canonicalize import canonicalize_model
+    from regimehmm.regimes.characterize import characterize_regimes
+
+    # TRAIN-ONLY features + standardization (scaler is fit on the train window).
+    train_features = build_features(train_returns, feature_set=feature_set)  # type: ignore[arg-type]
+    raw = train_features.to_numpy(dtype="float64")
+    mean = raw.mean(axis=0, keepdims=True)
+    std = raw.std(axis=0, ddof=0, keepdims=True)
+    std = _np.where(std > 0.0, std, 1.0)
+    scaled_train = (raw - mean) / std
+
+    model = fit_hmm(scaled_train, n_states, n_restarts=n_restarts, max_iter=max_iter, seed=seed)
+    model = canonicalize_model(model)
+
+    # Risk-off = the HIGHEST-VOLATILITY regime, taken from the TRAIN characterization
+    # (online-filter labels on the train window), NOT a positional last state.
+    train_posterior = online_filter(model, scaled_train)
+    train_states = _np.asarray(_np.argmax(train_posterior, axis=1), dtype=_np.float64)
+    train_aligned = train_returns.reindex(train_features.index)
+    train_char = characterize_regimes(model, train_states, train_aligned)
+    risk_off = (select_risk_off_state(train_char),)
+
+    # Build eval features from a window that includes a BOUNDED trailing prefix of
+    # TRAIN (long enough for the slowest causal window — the macro mean uses 6 x
+    # vol_window = 126 bars — plus a safety buffer) so the rolling features are
+    # defined at the first eval bar without an O(n^2) full-history rebuild each fold.
+    # Standardize with the TRAIN scaler (never refit on eval), then online-filter the
+    # eval rows only.
+    prefix_len = min(len(train_returns), 160)
+    train_tail = train_returns.iloc[len(train_returns) - prefix_len :]
+    combined = pd.concat([train_tail, eval_returns])
+    combined = combined[~combined.index.duplicated(keep="first")].sort_index()
+    eval_features_full = build_features(combined, feature_set=feature_set)  # type: ignore[arg-type]
+    eval_features = eval_features_full.reindex(eval_returns.index).dropna(axis=0, how="any")
+    scaled_eval = (eval_features.to_numpy(dtype="float64") - mean) / std
+    if scaled_eval.shape[0] == 0:
+        empty = pd.Series(dtype="float64")
+        return empty, empty
+
+    eval_posterior = online_filter(model, scaled_eval)
+    target = regime_exposure(eval_posterior, risk_off_states=risk_off, risk_off_exposure=0.0)
+    labels = _np.asarray(_np.argmax(eval_posterior, axis=1), dtype=_np.float64)
+
+    exposure = pd.Series(target, index=eval_features.index, dtype="float64")
+    label_series = pd.Series(labels, index=eval_features.index, dtype="float64")
+    return exposure, label_series
+
+
+def walk_forward_regime_overlay(
+    returns: pd.Series,
+    *,
+    feature_set: str = "returns_vol",
+    n_states: int = 3,
+    lookback_window: int,
+    rebalance: str = "monthly",
+    cost_bps: float = 10.0,
+    embargo: int = 1,
+    purge: int = 1,
+    anchored: bool = True,
+    seed: int = 7,
+    n_restarts: int = 2,
+    max_iter: int = 40,
+    fit_window_cap: int = 252,
+) -> WalkForwardRegimeResult:
+    r"""Genuinely-OOS regime overlay: per-fold TRAIN-only fit + online-filter labels.
+
+    This is the honest, no-leakage entrypoint the hosted backend reports from. On
+    each anchored fold the scaler + Gaussian HMM are refit on the TRAIN window
+    ONLY, the risk-off state is the HIGHEST-VOLATILITY regime from the train
+    characterization (never a positional last state), the ONLINE FILTER (data
+    ``<= t`` only — never smoothed/Viterbi) labels the upcoming OOS window, and the
+    decided exposure is applied via the engine's ``shift(1)`` chokepoint with the
+    same purge / embargo discipline as the shared
+    :func:`~regimehmm.backtest.walk_forward.walk_forward_backtest`. The overlay and
+    the buy-and-hold leg are scored on the IDENTICAL post-purge/embargo OOS index.
+
+    Because every fold refits on its train window, NO future bar informs either the
+    regime labels or the overlay return on or before any OOS bar — the reported
+    ``overlay_sharpe`` / ``buyhold_sharpe`` are therefore genuinely out-of-sample,
+    not the in-sample numbers a full-window fit would produce.
+
+    Parameters
+    ----------
+    returns:
+        The realized per-period market return series (the full panel).
+    feature_set:
+        Emission features (``"returns"`` | ``"returns_vol"`` |
+        ``"returns_vol_macro"``); rebuilt causally per fold.
+    n_states:
+        Number of hidden regimes fit per fold.
+    lookback_window:
+        Minimum in-sample window length handed to the engine.
+    rebalance:
+        Rebalance cadence (``"monthly"`` or ``"quarterly"``).
+    cost_bps:
+        Per-side transaction cost in basis points.
+    embargo:
+        Observations embargoed after each in-sample window.
+    purge:
+        Boundary observations purged between in-sample and out-of-sample.
+    anchored:
+        If ``True`` (default), use an expanding (anchored) in-sample window.
+    seed:
+        Master seed for the per-fold HMM fits (deterministic).
+    n_restarts:
+        EM restarts per fold (kept small — the OOS sweep refits on every fold, so
+        a handful of seeded restarts is enough for a stable, deterministic fit).
+    max_iter:
+        EM iteration cap per fold (capped below the full-fit default so the
+        per-fold refits stay cheap on the hot request path).
+    fit_window_cap:
+        Maximum number of most-recent TRAIN bars the per-fold HMM is fit on (a
+        bounded, strictly-causal recent history; ~2y of daily data by default).
+        The walk-forward stays anchored — only the EM fit window is capped.
+
+    Returns
+    -------
+    WalkForwardRegimeResult
+        The overlay-vs-buy-and-hold bundle on the engine's OOS index plus the
+        per-fold ONLINE-FILTER OOS regime labels.
+
+    Raises
+    ------
+    ValidationError
+        If a scalar parameter is invalid.
+    InsufficientDataError
+        If the panel is too short for even one in-sample/out-of-sample split.
+    """
+    from regimehmm._constants import PERIODS_PER_YEAR, REBALANCE_PERIODS
+    from regimehmm._validation import ensure_series
+    from regimehmm.backtest.stats import sharpe_ratio
+    from regimehmm.backtest.walk_forward import walk_forward_backtest
+
+    market = ensure_series(returns, name="returns")
+    asset = str(market.name) if market.name else "asset"
+    panel = market.to_frame(name=asset)
+    rebal_step = REBALANCE_PERIODS.get(rebalance, 21)
+
+    # Per-fold, no-lookahead side-channel: the online-filter exposure DECIDED at the
+    # train edge and the per-OOS-bar canonical labels for the upcoming window. The
+    # engine reads only the scalar edge exposure; the labels are collected for the
+    # honest OOS regime map the no-lookahead end-to-end test pins.
+    label_panels: list[pd.Series] = []
+
+    def regime_allocator(in_sample: pd.DataFrame) -> pd.Series:
+        # The HMM is fit on at most the most-recent ``fit_window_cap`` train bars (a
+        # bounded, strictly-causal recent history) so the per-fold refit stays
+        # tractable on the hot request path. The walk-forward itself remains anchored
+        # (the engine's OOS index, purge and embargo are unchanged); only the EM fit
+        # window is capped — no future bar is ever read.
+        train_full = in_sample[asset].astype("float64")
+        train_returns = (
+            train_full.iloc[len(train_full) - fit_window_cap :]
+            if fit_window_cap and len(train_full) > fit_window_cap
+            else train_full
+        )
+        edge = in_sample.index[-1]
+        # ``edge`` is guaranteed present (it is the in-sample window's right edge), so
+        # get_indexer returns a single non-negative position; use it to avoid the
+        # int | slice | ndarray union that ``get_loc`` is typed to return.
+        edge_pos = int(market.index.get_indexer(pd.Index([edge]))[0])
+        # The upcoming OOS holding window starts just after the train edge (the
+        # engine applies its own shift(1)). Decode a forward slice so the labels are
+        # available for this fold; the exposure DECIDED for the next bar is the
+        # filtered risk-off mass at the train edge itself.
+        eval_slice = market.iloc[edge_pos : min(edge_pos + 1 + rebal_step, len(market))]
+        exposure, labels = _fit_filter_exposure_for_window(
+            train_returns,
+            eval_slice,
+            feature_set=feature_set,
+            n_states=n_states,
+            seed=seed,
+            n_restarts=n_restarts,
+            max_iter=max_iter,
+        )
+        if len(labels):
+            label_panels.append(labels)
+        # The decision for the first upcoming OOS bar is the exposure at the edge.
+        edge_exposure = float(exposure.loc[edge]) if edge in exposure.index else 1.0
+        return pd.Series({asset: edge_exposure}, dtype="float64")
+
+    def buyhold_allocator(_in_sample: pd.DataFrame) -> pd.Series:
+        return pd.Series({asset: 1.0}, dtype="float64")
+
+    overlay_bt = walk_forward_backtest(
+        panel,
+        regime_allocator,
+        lookback_window=lookback_window,
+        rebalance=rebalance,
+        cost_bps=cost_bps,
+        embargo=embargo,
+        purge=purge,
+        anchored=anchored,
+    )
+    buyhold_bt = walk_forward_backtest(
+        panel,
+        buyhold_allocator,
+        lookback_window=lookback_window,
+        rebalance=rebalance,
+        cost_bps=cost_bps,
+        embargo=embargo,
+        purge=purge,
+        anchored=anchored,
+    )
+
+    # IDENTICAL OOS INDEX: intersect both legs (same panel/cadence -> they coincide).
+    common = overlay_bt.oos_returns.index.intersection(buyhold_bt.oos_returns.index).sort_values()
+    overlay_oos = overlay_bt.oos_returns.reindex(common).astype("float64")
+    buyhold_oos = buyhold_bt.oos_returns.reindex(common).astype("float64")
+    if asset in overlay_bt.weights.columns:
+        exposure_oos = (
+            overlay_bt.weights[asset]
+            .reindex(overlay_bt.weights.index.union(common))
+            .ffill()
+            .reindex(common)
+            .fillna(0.0)
+            .astype("float64")
+        )
+    else:
+        exposure_oos = pd.Series(0.0, index=common, dtype="float64")
+
+    overlay_sharpe = sharpe_ratio(
+        np.asarray(overlay_oos.to_numpy(), dtype=np.float64), periods_per_year=PERIODS_PER_YEAR
+    )
+    buyhold_sharpe = sharpe_ratio(
+        np.asarray(buyhold_oos.to_numpy(), dtype=np.float64), periods_per_year=PERIODS_PER_YEAR
+    )
+
+    # Assemble the per-fold OOS labels into one series aligned to the scored index.
+    if label_panels:
+        all_labels = pd.concat(label_panels)
+        all_labels = all_labels[~all_labels.index.duplicated(keep="first")].sort_index()
+        oos_labels = all_labels.reindex(common)
+    else:
+        oos_labels = pd.Series(index=common, dtype="float64")
+
+    meta: dict[str, Any] = {
+        "cost_bps": float(cost_bps),
+        "n_obs": len(common),
+        "n_rebalances": int(overlay_bt.n_rebalances),
+        "lookback_window": int(lookback_window),
+        "rebalance": str(rebalance),
+        "anchored": bool(anchored),
+        "embargo": int(embargo),
+        "purge": int(purge),
+        "feature_set": str(feature_set),
+        "n_states": int(n_states),
+        "engine": "walk_forward_regime_overlay",
+    }
+
+    overlay_result = OverlayResult(
+        overlay_returns=overlay_oos,
+        buyhold_returns=buyhold_oos,
+        exposure=exposure_oos,
+        overlay_sharpe=overlay_sharpe,
+        buyhold_sharpe=buyhold_sharpe,
+        cost_bps=float(cost_bps),
+        turnover=float(overlay_bt.turnover.sum()),
+        meta=meta,
+    )
+    return WalkForwardRegimeResult(
+        overlay=overlay_result,
+        oos_labels=oos_labels,
+        oos_index=common,
     )

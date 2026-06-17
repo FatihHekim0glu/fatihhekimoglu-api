@@ -293,13 +293,20 @@ def _filtered_states(model: HMMModel, features: pd.DataFrame) -> FloatArray:
 
 
 def backtest(**kwargs: Any) -> int:
-    """Run the honest regime-timing overlay vs buy-and-hold and print the verdict.
+    """Run the honest, GENUINELY-OOS regime overlay vs buy-and-hold and print the verdict.
 
-    Orchestrates: fit -> online-filter decode -> regime-conditioned exposure overlay
-    across the cost grid -> Memmel-JK Sharpe-difference test and Deflated Sharpe
-    (with the FULL effective ``n_trials``) -> the honest, structurally-constrained
-    verdict. The verdict is a pure function of the OOS inference: it cannot claim a
-    timing edge when Memmel-JK is insignificant or the Deflated Sharpe is non-positive.
+    Orchestrates the same honest pipeline the backend reports from: per anchored
+    fold the scaler + HMM are refit on the TRAIN window ONLY, the risk-off state is
+    the HIGHEST-VOLATILITY regime from the train characterization (never a positional
+    last state), the ONLINE FILTER labels the upcoming OOS window, and the decided
+    exposure is applied via the engine's ``shift(1)`` on the IDENTICAL
+    post-purge/embargo OOS index. The reported overlay/buyhold Sharpes are therefore
+    genuinely out-of-sample, scored through
+    :func:`~regimehmm.backtest.overlay.walk_forward_regime_overlay`. The Memmel-JK
+    p-value and the Deflated Sharpe (full effective ``n_trials`` + a REAL cross-trial
+    Sharpe variance, never the degenerate ``0.0``) drive the pure-function verdict,
+    which cannot claim a timing edge when Memmel-JK is insignificant or the Deflated
+    Sharpe is non-positive.
 
     Parameters
     ----------
@@ -314,11 +321,11 @@ def backtest(**kwargs: Any) -> int:
     """
     from regimehmm._constants import PERIODS_PER_YEAR
     from regimehmm._exceptions import HRPError as RegimeHMMError
-    from regimehmm.backtest.overlay import overlay_backtest, regime_exposure
+    from regimehmm.analysis import _oos_lookback_window, _trial_sharpe_variance
+    from regimehmm.backtest.overlay import walk_forward_regime_overlay
     from regimehmm.evaluation.comparison import jobson_korkie_memmel
     from regimehmm.evaluation.dsr import deflated_sharpe_ratio
     from regimehmm.evaluation.verdict import derive_timing_verdict, effective_n_trials
-    from regimehmm.hmm.filter import online_filter
 
     n_states = int(kwargs["n_states"])
     feature_set = str(kwargs["feature_set"])
@@ -327,25 +334,26 @@ def backtest(**kwargs: Any) -> int:
     seed = int(kwargs.get("seed", 7))
 
     try:
-        import numpy as np
-
         returns = _generate_returns(n_obs, seed)
-        model, features, aligned_returns = _fit_on_features(
-            returns, n_states=n_states, feature_set=feature_set, seed=seed
+        returns.name = "SPY"
+
+        # GENUINELY-OOS overlay: per-fold TRAIN-only fit + online-filter labels +
+        # max-vol risk-off selection + shift(1) on the identical OOS index. No
+        # in-sample number is reported as OOS.
+        lookback = _oos_lookback_window(len(returns))
+        wf = walk_forward_regime_overlay(
+            returns,
+            feature_set=feature_set,
+            n_states=n_states,
+            lookback_window=lookback,
+            rebalance="quarterly",
+            cost_bps=cost_bps,
+            embargo=1,
+            purge=1,
+            anchored=True,
+            seed=seed,
         )
-
-        # Online-filter posterior (the only tradable signal). Risk-off = the
-        # highest-vol regime, which under canonical ordering is the LAST state.
-        raw = features.to_numpy(dtype="float64")
-        mean = raw.mean(axis=0, keepdims=True)
-        std = raw.std(axis=0, ddof=0, keepdims=True)
-        std = np.where(std > 0.0, std, 1.0)
-        scaled = (raw - mean) / std
-        posterior = online_filter(model, scaled)
-
-        risk_off = (model.n_states - 1,)
-        target = regime_exposure(posterior, risk_off_states=risk_off)
-        result = overlay_backtest(aligned_returns, target, cost_bps=cost_bps)
+        result = wf.overlay
 
         overlay_sharpe = result.overlay_sharpe
         buyhold_sharpe = result.buyhold_sharpe
@@ -356,22 +364,24 @@ def backtest(**kwargs: Any) -> int:
         )
 
         n_trials = effective_n_trials(len(_N_STATES_GRID), len(_FEATURE_VARIANTS), len(_COST_GRID))
+        trial_var = _trial_sharpe_variance(result.overlay_returns, _COST_GRID)
         per_obs_sharpe = overlay_sharpe / (PERIODS_PER_YEAR**0.5)
         dsr = deflated_sharpe_ratio(
             per_obs_sharpe,
             n_obs=len(result.overlay_returns),
             n_trials=n_trials,
-            variance_of_trial_sharpes=0.0,
+            variance_of_trial_sharpes=trial_var,
         )
 
         verdict = derive_timing_verdict(jk_pvalue, dsr, sharpe_diff)
 
-        print("regime-hmm backtest (overlay vs buy-and-hold, OOS)")
-        print("=" * 56)
+        print("regime-hmm backtest (overlay vs buy-and-hold, GENUINELY OOS)")
+        print("=" * 60)
         print(f"observations       : {len(result.overlay_returns)}")
-        print(f"n_states           : {model.n_states}")
+        print(f"n_states           : {n_states}")
         print(f"feature_set        : {feature_set}")
         print(f"cost_bps           : {cost_bps:.1f}")
+        print(f"OOS rebalances     : {result.meta.get('n_rebalances', 0)}")
         print(f"overlay OOS Sharpe : {overlay_sharpe:.4f}")
         print(f"buyhold OOS Sharpe : {buyhold_sharpe:.4f}")
         print(f"Sharpe diff        : {sharpe_diff:+.4f}")

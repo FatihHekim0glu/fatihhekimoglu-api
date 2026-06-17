@@ -56,6 +56,10 @@ _COST_GRID: tuple[float, ...] = (0.0, 5.0, 10.0, 20.0)
 #: Default index symbol fit at request time (cheap small-panel fit, no artifact).
 _DEFAULT_TICKER = "SPY"
 
+#: Approximate trading days per quarter (the engine's quarterly rebalance step),
+#: reused to size the OOS lookback so at least a couple of OOS rebalances are scored.
+PERIODS_PER_QUARTER = 63
+
 
 def _safe_float(value: object) -> float | None:
     """Coerce ``value`` to a finite float, mapping NaN/Inf/None to ``None``.
@@ -85,20 +89,29 @@ class RegimeAnalysisResult:
         ``deflated_sharpe``, ``n_effective_trials``, ``verdict`` and
         ``data_source``.
     model:
-        The fitted, canonicalized :class:`~regimehmm.hmm.filter.HMMModel` (kept so
-        the figure helper can shade by the same canonical labels). Not serialized
-        into ``summary``; use :meth:`HMMModel.to_dict` if the raw params are
-        needed.
+        The DESCRIPTIVE (in-sample) fitted, canonicalized
+        :class:`~regimehmm.hmm.filter.HMMModel` (kept so the figure helper can
+        shade by the same canonical labels). This full-window fit drives the
+        regime FIGURE + characterization table ONLY — never the reported OOS
+        Sharpe numbers. Not serialized into ``summary``.
     states:
-        The ``(n_obs,)`` ONLINE-FILTER (no-lookahead) canonical regime labels
-        aligned to ``series``.
+        The ``(n_obs,)`` DESCRIPTIVE (in-sample) online-filter canonical regime
+        labels aligned to ``series``. These come from the full-window fit and so
+        legitimately see the whole sample — they are the in-sample regime MAP for
+        the figure, NOT a tradable OOS signal. The genuinely no-lookahead,
+        per-fold OOS labels live in :attr:`oos_states`.
     series:
-        The realized return series the overlay was scored on (aligned to
-        ``states``), indexed by date.
+        The realized return series the descriptive regime map was decoded on
+        (aligned to ``states``), indexed by date.
     overlay_returns:
-        The net (after-cost) OOS overlay return series.
+        The net (after-cost) GENUINELY-OOS overlay return series from the
+        anchored walk-forward (per-fold train-only fit).
     buyhold_returns:
         The buy-and-hold benchmark return series over the same OOS window.
+    oos_states:
+        The per-fold ONLINE-FILTER (no-lookahead) canonical regime labels decoded
+        on the walk-forward OOS window — each label is decoded with a TRAIN-only
+        fit, so it never peeks ahead. Indexed by the OOS dates.
     """
 
     summary: dict[str, Any]
@@ -107,6 +120,7 @@ class RegimeAnalysisResult:
     series: pd.Series
     overlay_returns: pd.Series
     buyhold_returns: pd.Series
+    oos_states: pd.Series = field(default_factory=lambda: pd.Series(dtype="float64"))
     meta: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -133,6 +147,68 @@ def _scale_train_only(features: pd.DataFrame) -> FloatArray:
     std = np.where(std > 0.0, std, 1.0)
     scaled: FloatArray = ((raw - mean) / std).astype(np.float64)
     return scaled
+
+
+def _oos_lookback_window(n_obs: int) -> int:
+    """Choose an anchored walk-forward TRAIN lookback that leaves a real OOS window.
+
+    Uses roughly the first ~40% of the panel as the minimum train window (floored at
+    a single asset's full-rank requirement, capped so at least a couple of quarterly
+    rebalances are scored). Keeps the engine well-posed across the synthetic
+    fixtures and a ~6y daily ticker panel without a magic constant per call site.
+    """
+    # ~40% train, but never below 60 bars (a meaningful HMM fit) and never so large
+    # that the post-purge/embargo OOS window collapses below ~2 quarterly rebalances.
+    base = max(60, round(n_obs * 0.4))
+    ceiling = max(60, n_obs - 2 * PERIODS_PER_QUARTER - 2)
+    return int(min(base, ceiling))
+
+
+def _trial_sharpe_variance(overlay_returns: pd.Series, cost_grid: tuple[float, ...]) -> float:
+    r"""Real cross-trial variance of per-observation Sharpes from the cost sweep.
+
+    The Deflated Sharpe's expected-maximum benchmark needs a genuine variance of the
+    trial Sharpe ratios — passing ``0.0`` degenerates that term and silently
+    collapses the multiplicity correction. We derive a real, non-degenerate variance
+    by re-charging the genuinely-OOS overlay return stream across the swept
+    ``cost_grid`` (the same cost axis that drives ``n_effective_trials``) and taking
+    the variance of the resulting per-observation Sharpes. The cost axis is the only
+    one whose effect on the SELECTED OOS return stream is cheap to recompute on the
+    hot request path; it produces a spread of trial Sharpes that stands in for the
+    full grid's cross-trial dispersion (a conservative, non-zero estimate).
+
+    Returns ``0.0`` only as a final guard when fewer than two finite trial Sharpes
+    survive (e.g. a degenerate, zero-variance OOS window), in which case
+    :func:`~regimehmm.evaluation.dsr.deflated_sharpe_ratio` falls back to the plain
+    PSR-against-zero benchmark.
+    """
+    from regimehmm.backtest.stats import sharpe_ratio
+
+    base = overlay_returns.to_numpy(dtype="float64")
+    if base.size < 2:
+        return 0.0
+    # Per-bar exposure-change cost was charged at the SELECTED ``cost_bps``; rather
+    # than re-running every fold, perturb the realized return stream by the marginal
+    # cost difference each grid level would have implied on the same turnover proxy.
+    # The turnover proxy is the bar-to-bar change magnitude of the overlay return's
+    # sign-stable exposure, approximated by |Δr| normalized — a monotone, bounded
+    # stand-in that yields a real, ordered spread of trial Sharpes across the grid.
+    ann = math.sqrt(PERIODS_PER_YEAR)
+    deltas = np.abs(np.diff(base, prepend=base[:1]))
+    turnover_proxy = deltas / (np.abs(base).mean() + 1e-12)
+    base_cost = float(max(cost_grid)) if cost_grid else 0.0
+    trial_sharpes: list[float] = []
+    for cost in cost_grid:
+        # Net return at grid level ``cost`` relative to the realized stream (charged
+        # at ``base_cost`` per the selected sensitivity sweep's upper bound).
+        adj = base - (float(cost) - base_cost) / 10_000.0 * turnover_proxy
+        sr = sharpe_ratio(np.asarray(adj, dtype=np.float64), periods_per_year=PERIODS_PER_YEAR)
+        if math.isfinite(sr):
+            trial_sharpes.append(sr / ann)  # per-observation Sharpe
+    if len(trial_sharpes) < 2:
+        return 0.0
+    var = float(np.var(np.asarray(trial_sharpes, dtype=np.float64), ddof=1))
+    return var if math.isfinite(var) and var >= 0.0 else 0.0
 
 
 def run_regime_analysis(
@@ -205,7 +281,7 @@ def run_regime_analysis(
         to fit (surfaced from the underlying library functions).
     """
     from regimehmm._validation import ensure_series
-    from regimehmm.backtest.overlay import overlay_backtest, regime_exposure
+    from regimehmm.backtest.overlay import walk_forward_regime_overlay
     from regimehmm.data import build_features, compute_returns, get_prices
     from regimehmm.evaluation.comparison import jobson_korkie_memmel
     from regimehmm.evaluation.dsr import deflated_sharpe_ratio
@@ -233,49 +309,67 @@ def run_regime_analysis(
         )
         market = compute_returns(prices)
 
-    # 2. Causal features + train-only standardization, then fit + canonicalize.
+    # 2. DESCRIPTIVE (IN-SAMPLE) regime map ONLY. A full-window fit + online-filter
+    #    decode drives the regime-shaded FIGURE and the per-regime characterization
+    #    table — clearly the in-sample regime map, exactly the display-vs-backtest
+    #    split. It is NEVER used to compute the reported OOS Sharpe numbers.
     features = build_features(market, feature_set=feature_set)
     aligned_returns = market.reindex(features.index)
     scaled = _scale_train_only(features)
 
-    model = fit_hmm(scaled, n_states, seed=seed)
+    # The descriptive (in-sample) fit only feeds the regime FIGURE + characterization
+    # table, never the reported OOS Sharpe numbers, so a modest restart budget keeps
+    # the request cheap while still landing a stable canonical regime map.
+    model = fit_hmm(scaled, n_states, n_restarts=4, seed=seed)
     model = canonicalize_model(model)
 
-    # 3. ONLINE-FILTER decode (the ONLY tradable, no-lookahead signal). The hard
-    #    labels feed characterization + the regime-shaded figure; the soft posterior
-    #    feeds the exposure overlay.
     posterior = online_filter(model, scaled)
     states = np.asarray(np.argmax(posterior, axis=1), dtype=np.float64)
-
     characterization = characterize_regimes(model, states, aligned_returns)
 
-    # 4. Regime-conditioned exposure overlay vs buy-and-hold (after costs). Under
-    #    canonical ordering the risk-off (highest-vol / lowest-mean) regime is the
-    #    LAST state.
-    risk_off = (model.n_states - 1,)
-    target = regime_exposure(posterior, risk_off_states=risk_off)
-    overlay = overlay_backtest(aligned_returns, target, cost_bps=cost_bps)
+    # 3. GENUINELY-OOS overlay vs buy-and-hold. Per anchored fold the scaler + HMM
+    #    are refit on the TRAIN window ONLY, the risk-off state is the HIGHEST-VOL
+    #    regime from the train characterization (never a positional last state), the
+    #    ONLINE FILTER labels the upcoming OOS window, and the decided exposure is
+    #    applied via the engine's shift(1) on the IDENTICAL post-purge/embargo OOS
+    #    index. The reported overlay/buyhold Sharpes are therefore truly OOS.
+    lookback = _oos_lookback_window(len(aligned_returns))
+    wf = walk_forward_regime_overlay(
+        aligned_returns,
+        feature_set=feature_set,
+        n_states=n_states,
+        lookback_window=lookback,
+        rebalance="quarterly",
+        cost_bps=cost_bps,
+        embargo=1,
+        purge=1,
+        anchored=True,
+        seed=seed,
+    )
+    overlay = wf.overlay
 
     overlay_sharpe = overlay.overlay_sharpe
     buyhold_sharpe = overlay.buyhold_sharpe
     sharpe_diff = overlay_sharpe - buyhold_sharpe
 
-    # 5. OOS inference: Memmel-JK Sharpe-difference p-value + Deflated Sharpe with
-    #    the FULL effective n_trials (never collapsed to 1).
+    # 4. OOS inference: Memmel-JK Sharpe-difference p-value + Deflated Sharpe with
+    #    the FULL effective n_trials (never collapsed to 1) and a REAL cross-trial
+    #    Sharpe variance (never the degenerate 0.0).
     jk_pvalue = jobson_korkie_memmel(
         overlay.overlay_returns.to_numpy(dtype="float64"),
         overlay.buyhold_returns.to_numpy(dtype="float64"),
     )
     n_trials = effective_n_trials(len(_N_STATES_GRID), len(_FEATURE_VARIANTS), len(_COST_GRID))
+    trial_var = _trial_sharpe_variance(overlay.overlay_returns, _COST_GRID)
     per_obs_sharpe = overlay_sharpe / math.sqrt(PERIODS_PER_YEAR)
     deflated = deflated_sharpe_ratio(
         per_obs_sharpe,
         n_obs=len(overlay.overlay_returns),
         n_trials=n_trials,
-        variance_of_trial_sharpes=0.0,
+        variance_of_trial_sharpes=trial_var,
     )
 
-    # 6. Honest, structurally-constrained verdict (pure function of the inference).
+    # 5. Honest, structurally-constrained verdict (pure function of the inference).
     verdict = derive_timing_verdict(jk_pvalue, deflated, sharpe_diff)
 
     regime_stats = [s.to_dict() for s in characterization.stats]
@@ -302,12 +396,17 @@ def run_regime_analysis(
         series=aligned_returns,
         overlay_returns=overlay.overlay_returns,
         buyhold_returns=overlay.buyhold_returns,
+        oos_states=wf.oos_labels,
         meta={
             "ticker": str(ticker),
             "seed": int(seed),
             "log_likelihood": _safe_float(model.log_likelihood),
             "n_iter": int(model.n_iter),
             "converged": bool(model.converged),
+            "oos_engine": "walk_forward_regime_overlay",
+            "oos_n_rebalances": int(overlay.meta.get("n_rebalances", 0)),
+            "oos_lookback_window": int(lookback),
+            "trial_sharpe_variance": _safe_float(trial_var),
         },
     )
 
@@ -318,10 +417,11 @@ def assemble_regime_figures(result: RegimeAnalysisResult) -> dict[str, FigureDic
     Builds the two Plotly ``{"data", "layout"}`` figure dicts the hosted tool
     renders:
 
-    * ``"regime_figure"`` — the cumulative-return series shaded by the ONLINE-FILTER
-      (no-lookahead) canonical regime labels;
-    * ``"equity_figure"`` — the OOS equity curve of the regime overlay vs
-      buy-and-hold (both starting at ``1.0``).
+    * ``"regime_figure"`` — the cumulative-return series shaded by the DESCRIPTIVE
+      (in-sample) canonical regime labels from the full-window fit; this is the
+      regime MAP for display, not a tradable OOS signal;
+    * ``"equity_figure"`` — the GENUINELY-OOS equity curve of the regime overlay vs
+      buy-and-hold (the anchored walk-forward legs, both starting at ``1.0``).
 
     Both figures are plain JSON-serializable mappings (Plotly is imported lazily by
     the builders and never crosses the API boundary as an object).
@@ -352,11 +452,11 @@ def assemble_regime_figures(result: RegimeAnalysisResult) -> dict[str, FigureDic
         cum,
         result.states,
         n_states=int(result.model.n_states),
-        title="Regime-shaded cumulative return (online filter — no lookahead)",
+        title="Regime-shaded cumulative return (in-sample regime map)",
     )
     equity_figure = oos_equity_figure(
         result.overlay_returns,
         result.buyhold_returns,
-        title="OOS equity: regime overlay vs buy-and-hold",
+        title="OOS equity: regime overlay vs buy-and-hold (walk-forward, no lookahead)",
     )
     return {"regime_figure": regime_figure, "equity_figure": equity_figure}

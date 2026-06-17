@@ -49,9 +49,13 @@ from regimehmm.analysis import (
 from regimehmm.backtest.costs import FixedBpsCost
 from regimehmm.backtest.overlay import (
     OverlayResult,
+    WalkForwardRegimeResult,
     overlay_backtest,
     overlay_cost_grid,
     regime_exposure,
+    select_risk_off_state,
+    walk_forward_overlay,
+    walk_forward_regime_overlay,
 )
 from regimehmm.backtest.stats import (
     annualized_vol,
@@ -154,9 +158,13 @@ __all__ = [
     "turnover",
     "walk_forward_backtest",
     "OverlayResult",
+    "WalkForwardRegimeResult",
     "regime_exposure",
+    "select_risk_off_state",
     "overlay_backtest",
     "overlay_cost_grid",
+    "walk_forward_overlay",
+    "walk_forward_regime_overlay",
     # evaluation
     "ComparisonResult",
     "block_bootstrap_sharpe_gap",
