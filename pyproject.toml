@@ -113,6 +113,7 @@ module = [
     "onnxruntime.*",
     "volforecast.*",
     "arch.*",
+    "wsb_sentiment.*",
 ]
 ignore_missing_imports = true
 
