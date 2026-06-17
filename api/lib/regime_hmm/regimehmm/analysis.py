@@ -320,7 +320,7 @@ def run_regime_analysis(
     # The descriptive (in-sample) fit only feeds the regime FIGURE + characterization
     # table, never the reported OOS Sharpe numbers, so a modest restart budget keeps
     # the request cheap while still landing a stable canonical regime map.
-    model = fit_hmm(scaled, n_states, n_restarts=4, seed=seed)
+    model = fit_hmm(scaled, n_states, n_restarts=2, seed=seed)
     model = canonicalize_model(model)
 
     posterior = online_filter(model, scaled)
@@ -345,6 +345,14 @@ def run_regime_analysis(
         purge=1,
         anchored=True,
         seed=seed,
+        # Live-latency cap: the walk-forward refits the HMM per quarterly fold, so
+        # the per-fold EM search is bounded (1 seeded restart, <=20 iterations) to
+        # keep a synchronous request responsive on the scale-to-zero VM. This does
+        # NOT touch OOS integrity — each fold is still train-only fit + online-filter
+        # labels on the identical purged/embargoed OOS index; only the EM search
+        # depth per fold is trimmed. EM early-stops on convergence well before 20.
+        n_restarts=1,
+        max_iter=20,
     )
     overlay = wf.overlay
 
