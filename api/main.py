@@ -30,6 +30,7 @@ from .routers import (
     lstm_forecast,
     ma_crossover_backtest,
     markowitz_optimizer,
+    nn_vs_bs,
     pairs_trading,
     regime_hmm,
     stock_clusters,
@@ -96,3 +97,4 @@ app.include_router(anomaly_detector.router)
 app.include_router(lstm_forecast.router)
 app.include_router(volforecast.router)
 app.include_router(wsb_sentiment.router)
+app.include_router(nn_vs_bs.router)
