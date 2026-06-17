@@ -45,6 +45,10 @@ dependencies = [
     "cvxpy>=1.5,<2.0",
     # vendored from lendingclub-default (scikit-learn already pinned above; no shap/[all])
     "xgboost>=2.0",
+    # vendored from volforecast [data] extra: GARCH family via arch. XGBoost is
+    # already pinned above; NO tensorflow (the volforecast LSTM arm is research-
+    # only and is NEVER imported on this serve path).
+    "arch>=6",
     # vendored from crypto-arb-scanner (lean [data]; NO ccxt[all]). ccxt is imported
     # lazily inside the handler; any upstream failure degrades to synthetic.
     "ccxt>=4",
@@ -107,6 +111,8 @@ module = [
     "anomaly_detector.*",
     "lstmforecast.*",
     "onnxruntime.*",
+    "volforecast.*",
+    "arch.*",
 ]
 ignore_missing_imports = true
 

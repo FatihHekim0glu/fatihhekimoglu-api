@@ -35,6 +35,7 @@ from .routers import (
     stock_clusters,
     stock_dashboard,
     stock_price_forecast,
+    volforecast,
 )
 
 logging.basicConfig(
@@ -92,3 +93,4 @@ app.include_router(lendingclub_default.router)
 app.include_router(crypto_arb_scanner.router)
 app.include_router(anomaly_detector.router)
 app.include_router(lstm_forecast.router)
+app.include_router(volforecast.router)
