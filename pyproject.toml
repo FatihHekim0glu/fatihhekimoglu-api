@@ -48,6 +48,10 @@ dependencies = [
     # vendored from crypto-arb-scanner (lean [data]; NO ccxt[all]). ccxt is imported
     # lazily inside the handler; any upstream failure degrades to synthetic.
     "ccxt>=4",
+    # vendored from lstm-forecast: ONNX serving ONLY (the [serve] extra). The
+    # lstm-forecast router imports NO TensorFlow — inference runs through
+    # onnxruntime against the committed <5MB synthetic-trained ONNX artifact.
+    "onnxruntime>=1.17",
 ]
 
 [project.optional-dependencies]
@@ -101,6 +105,8 @@ module = [
     "ccxt.*",
     "regimehmm.*",
     "anomaly_detector.*",
+    "lstmforecast.*",
+    "onnxruntime.*",
 ]
 ignore_missing_imports = true
 

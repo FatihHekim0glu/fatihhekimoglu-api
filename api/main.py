@@ -27,6 +27,7 @@ from .routers import (
     factorlab,
     hrp_portfolio,
     lendingclub_default,
+    lstm_forecast,
     ma_crossover_backtest,
     markowitz_optimizer,
     pairs_trading,
@@ -90,3 +91,4 @@ app.include_router(stock_clusters.router)
 app.include_router(lendingclub_default.router)
 app.include_router(crypto_arb_scanner.router)
 app.include_router(anomaly_detector.router)
+app.include_router(lstm_forecast.router)
