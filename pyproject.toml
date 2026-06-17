@@ -99,6 +99,7 @@ module = [
     "lendingclub_default.*",
     "cryptoarb.*",
     "ccxt.*",
+    "regimehmm.*",
 ]
 ignore_missing_imports = true
 

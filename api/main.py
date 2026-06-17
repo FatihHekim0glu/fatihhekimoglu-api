@@ -12,8 +12,8 @@ That's it — no platform-side changes required.
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +29,7 @@ from .routers import (
     ma_crossover_backtest,
     markowitz_optimizer,
     pairs_trading,
+    regime_hmm,
     stock_clusters,
     stock_dashboard,
     stock_price_forecast,
@@ -83,6 +84,7 @@ app.include_router(ma_crossover_backtest.router)
 app.include_router(stock_price_forecast.router)
 app.include_router(eigen_portfolios.router)
 app.include_router(hrp_portfolio.router)
+app.include_router(regime_hmm.router)
 app.include_router(stock_clusters.router)
 app.include_router(lendingclub_default.router)
 app.include_router(crypto_arb_scanner.router)
