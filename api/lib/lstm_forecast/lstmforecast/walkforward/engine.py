@@ -236,6 +236,10 @@ def make_folds(n_obs: int, config: WalkForwardConfig) -> list[Fold]:
     each test block. With ``anchored=True`` the train slice starts at row 0 and
     grows; otherwise it rolls with length ``train_size``.
 
+    NO-OVERLAP GUARANTEE: consecutive test slices advance by ``step + embargo``
+    rows, so ``step + embargo`` must be ``>= test_size`` or adjacent OOS test
+    blocks would overlap and double-count observations; this is asserted up front.
+
     Parameters
     ----------
     n_obs:
@@ -250,6 +254,9 @@ def make_folds(n_obs: int, config: WalkForwardConfig) -> list[Fold]:
 
     Raises
     ------
+    ValidationError
+        If ``n_obs < 0`` or ``step + embargo < test_size`` (which would let
+        consecutive OOS test slices overlap).
     InsufficientDataError
         If not a single fold fits in ``n_obs`` rows.
     """
@@ -261,11 +268,19 @@ def make_folds(n_obs: int, config: WalkForwardConfig) -> list[Fold]:
 
     purge = config.effective_purge
     embargo = config.embargo
-    # The fold advance includes an EMBARGO gap after each test block so adjacent
-    # folds cannot share information through overlapping windows: even if
-    # ``step < test_size``, the embargo forces a strictly positive gap between one
-    # fold's test block and the next fold's region.
+    # The fold advance includes an EMBARGO gap after each test block. Consecutive
+    # test slices advance by exactly ``advance`` rows, so a positive overlap arises
+    # iff ``advance < test_size``. FOLD-OVERLAP GUARD: require ``step + embargo >=
+    # test_size`` (equivalently ``step >= test_size`` once the embargo is netted
+    # out) so adjacent OOS test blocks NEVER overlap — overlapping test slices would
+    # double-count observations and inflate the OOS sample with correlated days.
     advance = config.step + embargo
+    if advance < config.test_size:
+        raise ValidationError(
+            f"make_folds: step + embargo ({config.step} + {embargo} = {advance}) must be "
+            f">= test_size ({config.test_size}) so consecutive OOS test slices do not overlap; "
+            f"increase step (to >= {config.test_size - embargo}) or test_size."
+        )
 
     # One fold consumes, from its train start: the train slice, a purge gap, the
     # val slice, a purge gap, then the test slice.

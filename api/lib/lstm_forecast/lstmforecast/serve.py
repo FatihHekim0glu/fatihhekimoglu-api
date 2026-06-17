@@ -7,10 +7,12 @@ honest pipeline WITHOUT TensorFlow:
   and run a forward pass on a pre-scaled sequence tensor (a thin, typed wrapper
   over :class:`lstmforecast.models.onnx_runtime.OnnxForecaster`).
 - :func:`run_forecast` — the high-level backend entrypoint: build/load a price
-  series, run the leakage-free walk-forward (per-fold scaler, purge, embargo),
-  evaluate the model vs. persistence in RETURN space, derive the honest
-  ``beats_naive`` verdict, and return a JSON-safe ``summary`` plus the two Plotly
-  ``{data, layout}`` figures. NO price-level R² anywhere.
+  series, run the leakage-free walk-forward (per-fold scaler, purge, embargo) with
+  the committed ONNX LSTM as the MODEL arm, evaluate that LSTM vs. persistence in
+  RETURN space, derive the honest ``beats_naive`` verdict, and return a JSON-safe
+  ``summary`` plus the two Plotly ``{data, layout}`` figures. The served metrics
+  come from the ONNX LSTM via onnxruntime, NOT persistence. NO price-level R²
+  anywhere.
 
 onnxruntime is imported lazily (inside the model layer) and TensorFlow is NEVER
 imported on this path. Importing this module has no side effects.
@@ -157,17 +159,21 @@ def run_forecast(
     seed: int = 7,
     artifact_path: str | Path | None = None,
 ) -> ForecastRun:
-    """Backend entrypoint: walk-forward → evaluate vs. persistence → figures.
+    """Backend entrypoint: run the ONNX LSTM walk-forward vs. persistence → figures.
 
     Builds (or loads) a price series, runs the leakage-free walk-forward (per-fold
-    scaler fit on TRAIN only, ``>= look_back`` purge, embargo), evaluates the
-    stacked OOS forecasts against persistence in RETURN space, derives the honest
-    ``beats_naive`` verdict, and assembles the two Plotly figures. Serves via
-    onnxruntime ONLY — TensorFlow is never imported. NO price-level R² anywhere.
+    scaler fit on TRAIN only, ``>= look_back`` purge, embargo) with the committed
+    ONNX LSTM as the MODEL arm, evaluates the stacked OOS LSTM forecasts against
+    the persistence baseline in RETURN space, derives the honest ``beats_naive``
+    verdict, and assembles the two Plotly figures. Serves via onnxruntime ONLY —
+    TensorFlow is never imported. NO price-level R² anywhere.
 
-    When the committed ONNX artifact is present it is loaded (lazily, via
-    onnxruntime) and recorded in ``meta``; the OOS *evaluation* uses the
-    persistence forecaster so the documented NULL is reproducible without a GPU.
+    The committed ONNX artifact is loaded eagerly (via onnxruntime) and its real
+    forward pass produces the OOS model predictions on each fold's per-fold-scaled
+    sequences — the served metrics are the genuine LSTM-vs-persistence comparison,
+    not persistence-vs-persistence. If the artifact is missing or corrupt an
+    :class:`~lstmforecast._exceptions.ArtifactError` is raised (a blocker) rather
+    than silently falling back to persistence.
 
     Parameters
     ----------
@@ -189,6 +195,10 @@ def run_forecast(
 
     Raises
     ------
+    ArtifactError
+        If the committed ONNX artifact is missing or cannot be loaded — surfaced
+        as a blocker so the served metrics are never silently computed from
+        persistence instead of the LSTM.
     ValidationError
         If the request parameters or the data are malformed.
     InsufficientDataError
@@ -197,8 +207,11 @@ def run_forecast(
     from lstmforecast.data import load_prices, random_walk_prices
     from lstmforecast.evaluation.metrics import forecast_metrics
     from lstmforecast.evaluation.verdict import derive_verdict
-    from lstmforecast.models.baselines import PersistenceForecaster
-    from lstmforecast.models.onnx_runtime import default_artifact_path
+    from lstmforecast.models.onnx_runtime import (
+        OnnxForecaster,
+        OnnxWalkForwardForecaster,
+        default_artifact_path,
+    )
     from lstmforecast.plots import error_vs_baseline_figure, forecast_vs_actual_figure
     from lstmforecast.train import _HPO_GRID, _walk_forward_config
     from lstmforecast.walkforward.engine import run_walk_forward
@@ -210,24 +223,35 @@ def run_forecast(
     else:
         prices, data_source = load_prices(data_path)
 
-    # --- 2. Leakage-free walk-forward (same folds for model and baseline). -----
+    # --- 2. Load the committed ONNX LSTM (the MODEL arm; NEVER persistence). ----
+    # The served metrics MUST come from the real trained LSTM via onnxruntime. If
+    # the artifact is missing or corrupt we surface an ArtifactError (a blocker)
+    # rather than silently degrading to persistence-vs-persistence, which would
+    # make ``beats_naive`` vacuous.
+    resolved_artifact = default_artifact_path() if artifact_path is None else artifact_path
+    onnx_forecaster = OnnxForecaster(resolved_artifact)
+    onnx_forecaster.load()  # eagerly create the session; raises ArtifactError if absent/corrupt
+
+    # --- 3. Leakage-free walk-forward (same folds for model and baseline). ------
+    # The MODEL arm is the ONNX LSTM run through onnxruntime on the per-fold-scaled
+    # sequences; the persistence baseline (all-zero ``r_hat``) is supplied by the
+    # engine as ``y_pred_naive``. This is the actual LSTM-vs-persistence question.
     wf_config = _walk_forward_config(int(prices.shape[0]), int(look_back))
     grid = [dict(p) for p in _HPO_GRID]
 
-    def _factory(_params: dict[str, Any]) -> PersistenceForecaster:
-        return PersistenceForecaster()
+    def _factory(_params: dict[str, Any]) -> OnnxWalkForwardForecaster:
+        return OnnxWalkForwardForecaster(onnx_forecaster)
 
     wf_result = run_walk_forward(prices, _factory, wf_config, hpo_grid=grid)
 
-    # --- 3. Return-space metrics + the honest verdict. ------------------------
+    # --- 4. Return-space metrics + the honest verdict (ONNX LSTM vs persistence).
     metrics = forecast_metrics(wf_result.y_true, wf_result.y_pred_model, wf_result.y_pred_naive)
     verdict = derive_verdict(
         metrics.mase_vs_persistence, metrics.dm_pvalue, metrics.directional_accuracy
     )
 
-    # --- 4. Record whether the served ONNX artifact is present (serve path). ---
-    resolved_artifact = default_artifact_path() if artifact_path is None else artifact_path
-    served_via = "onnx" if _artifact_exists(resolved_artifact) else "persistence"
+    # --- 5. The served forecast came from the ONNX LSTM via onnxruntime. --------
+    served_via = "onnx"
 
     summary = ForecastSummary(
         rmse_return=metrics.rmse_return,
@@ -243,7 +267,7 @@ def run_forecast(
         rationale=verdict.rationale,
     )
 
-    # --- 5. Honest figures (return space; equal error bars on a random walk). --
+    # --- 6. Honest figures (return space; the ONNX LSTM forecast vs realized). -
     forecast_fig = forecast_vs_actual_figure(
         wf_result.dates, wf_result.y_true, wf_result.y_pred_model
     )
@@ -261,10 +285,3 @@ def run_forecast(
             "look_back": int(look_back),
         },
     )
-
-
-def _artifact_exists(path: str | Path) -> bool:
-    """Return ``True`` if ``path`` is an existing file (no heavy import)."""
-    import os
-
-    return os.path.isfile(os.fspath(path))

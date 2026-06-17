@@ -151,14 +151,17 @@ def train_pipeline(
     n_prices = int(prices.shape[0])
 
     # --- 2. Walk-forward (per-fold scaler on TRAIN only, purge >= look_back,
-    # embargo). The forecaster is evaluated through the SAME folds as the
-    # persistence baseline so the comparison is apples-to-apples. ---------------
+    # embargo). The MODEL arm is the committed ONNX LSTM run through onnxruntime
+    # (the SAME engine the backend serves) so the OOS metrics are a genuine
+    # LSTM-vs-persistence comparison; the persistence baseline runs through the
+    # SAME folds so the comparison is apples-to-apples. -------------------------
     wf_config = _walk_forward_config(n_prices, int(look_back))
     grid = [dict(params) for params in _HPO_GRID]
 
+    oos_artifact = default_artifact_path() if artifact_path is None else artifact_path
     wf_result = run_walk_forward(
         prices,
-        _oos_model_factory(),
+        _oos_model_factory(oos_artifact),
         wf_config,
         hpo_grid=grid,
     )
@@ -182,7 +185,7 @@ def train_pipeline(
 
     # --- 5. (Optional) fit a final small LSTM and export the <5MB ONNX artifact.
     final_config = LstmConfig(look_back=int(look_back), n_features=_n_features(), seed=int(seed))
-    target_path = default_artifact_path() if artifact_path is None else artifact_path
+    target_path = oos_artifact
     exported_path = ""
     export_backend = "skipped"
     if export:
@@ -264,21 +267,33 @@ def _walk_forward_config(n_obs: int, look_back: int) -> WalkForwardConfig:
     )
 
 
-def _oos_model_factory() -> Any:
-    """Return the per-fold OOS forecaster factory used in the walk-forward.
+def _oos_model_factory(artifact_path: str | Path) -> Any:
+    """Return the per-fold OOS forecaster factory: the committed ONNX LSTM.
 
-    On a random walk the next-day return is unpredictable, so the honest,
-    reproducible OOS forecaster is persistence (``r_hat = 0``): it ties the naive
-    baseline exactly, giving ``MASE == 1`` and an insignificant Diebold-Mariano
-    test — the documented NULL, by construction. (When the heavy ``[train]`` extra
-    is present, the canonical retrain path fits a Keras LSTM for the EXPORTED
-    artifact; the OOS *evaluation* deliberately uses persistence so the null is
-    reproducible without a GPU and cannot be inflated by a lucky fit.)
+    The MODEL arm is the trained LSTM run through onnxruntime on each fold's
+    per-fold-scaled ``look_back`` sequences (the SAME engine the backend serves),
+    so the walk-forward metrics are a genuine LSTM-vs-persistence comparison — the
+    LSTM truly runs, never persistence-vs-persistence. On a random walk the next-day
+    return is unpredictable, so the LSTM's OOS forecast carries no signal and lands
+    ``MASE >= ~1`` with an insignificant (or wrong-signed) Diebold-Mariano test —
+    the documented NULL, but NON-vacuously.
+
+    A single :class:`~lstmforecast.models.onnx_runtime.OnnxForecaster` is shared
+    across folds so the onnxruntime session is created once. If the artifact is
+    missing or corrupt the wrapped forecaster raises ``ArtifactError`` on first
+    predict (a blocker), rather than silently degrading to persistence.
+
+    (When the heavy ``[train]`` extra is present, the canonical retrain path fits a
+    Keras LSTM for the EXPORTED artifact; the OOS *evaluation* runs that exported
+    LSTM through onnxruntime so the comparison is reproducible without a GPU and
+    TensorFlow is never on the eval path.)
     """
-    from lstmforecast.models.baselines import PersistenceForecaster
+    from lstmforecast.models.onnx_runtime import OnnxForecaster, OnnxWalkForwardForecaster
 
-    def factory(_params: dict[str, Any]) -> PersistenceForecaster:
-        return PersistenceForecaster()
+    shared = OnnxForecaster(artifact_path)
+
+    def factory(_params: dict[str, Any]) -> OnnxWalkForwardForecaster:
+        return OnnxWalkForwardForecaster(shared)
 
     return factory
 

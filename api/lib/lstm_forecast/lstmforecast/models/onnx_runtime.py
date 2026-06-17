@@ -6,6 +6,11 @@ extra = numpy + onnxruntime) and runs a forward pass; TensorFlow is never
 imported here. onnxruntime is imported LAZILY inside the functions so that
 ``import lstmforecast`` stays free of any inference engine.
 
+:class:`OnnxForecaster` is the low-level session wrapper;
+:class:`OnnxWalkForwardForecaster` adapts it to the walk-forward engine's
+``fit``/``predict`` model contract so the SERVED metrics compare the real ONNX
+LSTM against persistence (never persistence-vs-persistence).
+
 Importing this module has no side effects.
 """
 
@@ -153,3 +158,84 @@ class OnnxForecaster:
             ) from exc
 
         return np.asarray(outputs[0], dtype="float64").reshape(-1)
+
+
+class OnnxWalkForwardForecaster:
+    """Walk-forward MODEL arm backed by the committed ONNX LSTM (onnxruntime).
+
+    This is the served/evaluated MODEL the walk-forward engine pits against the
+    persistence baseline. It satisfies the engine's ``fit(X, y)`` / ``predict(X)``
+    contract, but the parameters are NOT learned in-process: the forecaster wraps
+    a pre-trained :class:`OnnxForecaster` over the committed artifact and runs a
+    real forward pass through onnxruntime on the per-fold-scaled ``look_back``
+    sequences. ``fit`` is therefore a deliberate no-op (the artifact is fixed), so
+    the OOS predictions are the genuine ONNX LSTM outputs — never persistence's
+    ``r_hat = 0``.
+
+    The session is created lazily and SHARED across folds via a single wrapped
+    :class:`OnnxForecaster`, so repeated walk-forward folds do not re-initialize
+    onnxruntime. TensorFlow is never imported on this path.
+    """
+
+    def __init__(self, forecaster: OnnxForecaster) -> None:
+        """Wrap a (possibly already-loaded) :class:`OnnxForecaster`.
+
+        Parameters
+        ----------
+        forecaster:
+            The ONNX serve wrapper whose session runs the OOS forward pass. Sharing
+            one instance across folds reuses a single onnxruntime session.
+        """
+        self._forecaster = forecaster
+
+    def fit(self, x: SequenceTensor, y: FloatArray) -> OnnxWalkForwardForecaster:
+        """Return ``self`` unchanged — the committed ONNX artifact is fixed.
+
+        The shipped LSTM is trained offline and frozen into the ONNX graph, so the
+        walk-forward does NOT re-fit weights here. ``fit`` exists only to mirror the
+        engine's model API (the persistence baseline is identically stateless).
+
+        Parameters
+        ----------
+        x:
+            The train-fold pre-scaled sequence tensor (ignored).
+        y:
+            The train-fold target returns (ignored).
+
+        Returns
+        -------
+        OnnxWalkForwardForecaster
+            ``self``, for call-chaining parity with the other forecasters.
+        """
+        return self
+
+    def predict(self, x: SequenceTensor) -> FloatArray:
+        """Run the committed ONNX LSTM forward pass on a PRE-SCALED sequence tensor.
+
+        Returns one genuine next-day return forecast per input window via
+        onnxruntime. Empty test slices short-circuit to an empty vector so the
+        walk-forward engine can stack a degenerate fold without touching the
+        session.
+
+        Parameters
+        ----------
+        x:
+            A ``(n_samples, look_back, n_features)`` per-fold-scaled tensor.
+
+        Returns
+        -------
+        FloatArray
+            A ``(n_samples,)`` next-day return forecast from the ONNX LSTM.
+
+        Raises
+        ------
+        ArtifactError
+            If the artifact is missing/corrupt or its input signature does not
+            match the per-fold sequence shape.
+        """
+        import numpy as np
+
+        x_arr = np.asarray(x, dtype="float64")
+        if x_arr.ndim == 3 and x_arr.shape[0] == 0:
+            return np.empty((0,), dtype="float64")
+        return self._forecaster.predict(x_arr)
