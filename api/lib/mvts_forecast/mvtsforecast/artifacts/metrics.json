@@ -1,0 +1,46 @@
+{
+  "best_model": "naive",
+  "by_model": {
+    "lstm": {
+      "deflated_sharpe": 0.05778714076521574,
+      "directional_accuracy": 0.5037878787878788,
+      "dm_pvalue_vs_naive": 4.491517277921003e-19,
+      "net_pnl_sharpe": -0.019860606248881394,
+      "rmse_return": 0.012942976851066195
+    },
+    "naive": {
+      "deflated_sharpe": 0.1969734782568553,
+      "directional_accuracy": 0.0,
+      "dm_pvalue_vs_naive": 1.0,
+      "net_pnl_sharpe": 0.0,
+      "rmse_return": 0.010991133846921951
+    },
+    "patchtst": {
+      "deflated_sharpe": 0.7498876731333283,
+      "directional_accuracy": 0.5022727272727273,
+      "dm_pvalue_vs_naive": 1.7094603751412325e-175,
+      "net_pnl_sharpe": 0.042042895781536756,
+      "rmse_return": 0.35585249830692
+    },
+    "transformer": {
+      "deflated_sharpe": 0.9902686662504057,
+      "directional_accuracy": 0.5068181818181818,
+      "dm_pvalue_vs_naive": 4.9923127693742346e-145,
+      "net_pnl_sharpe": 0.08793267272891087,
+      "rmse_return": 0.05157851154624445
+    }
+  },
+  "data_source": "synthetic",
+  "deep_beats_naive": false,
+  "horizon": 1,
+  "lookback": 60,
+  "manifest": {
+    "config_hash": "d988455b539cdca875ccf7516ae57753",
+    "dirty": true,
+    "extra": {},
+    "git_sha": "1b43cad",
+    "seed": 7
+  },
+  "n_effective_trials": 3,
+  "target": "SPY"
+}

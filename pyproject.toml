@@ -115,6 +115,7 @@ module = [
     "regimehmm.*",
     "anomaly_detector.*",
     "lstmforecast.*",
+    "mvtsforecast.*",
     "nnvsbs.*",
     "onnxruntime.*",
     "tokenizers.*",
