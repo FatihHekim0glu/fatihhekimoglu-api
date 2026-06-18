@@ -12,7 +12,6 @@ from datetime import UTC, date, datetime, timedelta
 
 import pandas as pd
 import pytest
-
 from src import data
 
 # Resolve DataFetchError defensively so tests are still collectable if the

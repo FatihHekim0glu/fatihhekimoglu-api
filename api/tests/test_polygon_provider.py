@@ -12,7 +12,6 @@ from datetime import date
 from typing import Any
 
 import httpx
-import pandas as pd
 import pytest
 
 from api.lib.polygon.provider import (
@@ -39,27 +38,25 @@ class _FakeQuery:
         self._table = table
         self._filters: list[tuple[str, str, Any]] = []
 
-    def select(self, *_: str) -> "_FakeQuery":
+    def select(self, *_: str) -> _FakeQuery:
         return self
 
-    def eq(self, col: str, value: Any) -> "_FakeQuery":
+    def eq(self, col: str, value: Any) -> _FakeQuery:
         self._filters.append(("eq", col, value))
         return self
 
-    def gte(self, col: str, value: Any) -> "_FakeQuery":
+    def gte(self, col: str, value: Any) -> _FakeQuery:
         self._filters.append(("gte", col, value))
         return self
 
-    def lte(self, col: str, value: Any) -> "_FakeQuery":
+    def lte(self, col: str, value: Any) -> _FakeQuery:
         self._filters.append(("lte", col, value))
         return self
 
-    def order(self, *_: str) -> "_FakeQuery":
+    def order(self, *_: str) -> _FakeQuery:
         return self
 
-    def upsert(
-        self, rows: list[dict[str, Any]], on_conflict: str = ""
-    ) -> "_FakeQuery":
+    def upsert(self, rows: list[dict[str, Any]], on_conflict: str = "") -> _FakeQuery:
         self._store.setdefault(self._table, []).extend(rows)
         return self
 
@@ -89,9 +86,7 @@ class _FakeTable:
     def select(self, *cols: str) -> _FakeQuery:
         return _FakeQuery(self._store, self._table).select(*cols)
 
-    def upsert(
-        self, rows: list[dict[str, Any]], on_conflict: str = ""
-    ) -> _FakeQuery:
+    def upsert(self, rows: list[dict[str, Any]], on_conflict: str = "") -> _FakeQuery:
         return _FakeQuery(self._store, self._table).upsert(rows, on_conflict)
 
 

@@ -131,9 +131,7 @@ def test_run_falls_back_to_yfinance_when_no_key(
     fallback = PolygonProviderFallback(supabase_client=None)
     load_prices_calls: list[tuple[Any, ...]] = []
 
-    def _fake_load_prices(
-        tickers: list[str], start: str, end: str, **_kw: Any
-    ) -> pd.DataFrame:
+    def _fake_load_prices(tickers: list[str], start: str, end: str, **_kw: Any) -> pd.DataFrame:
         load_prices_calls.append((tuple(tickers), start, end))
         idx = pd.bdate_range(start=start, end=end, name="Date").tz_localize("UTC")
         frames: list[pd.DataFrame] = []

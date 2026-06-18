@@ -23,7 +23,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from api.lib.ma_crossover_backtest import data as vendor_data
 from api.lib.polygon.provider import PolygonProvider, PolygonProviderFallback
 from api.routers import ma_crossover_backtest as router_module
 
@@ -78,9 +77,7 @@ def _payload(start: str = "2023-01-01", end: str = "2024-12-31") -> dict[str, ob
 # ---------------------------------------------------------------------------
 
 
-def test_run_uses_polygon_when_key_present(
-    client, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_run_uses_polygon_when_key_present(client, monkeypatch: pytest.MonkeyPatch) -> None:
     """When the factory returns a PolygonProvider, the run must call get_eod."""
     fake_frame = _synthetic_ohlcv()
     mock_provider = MagicMock(spec=PolygonProvider)
@@ -88,15 +85,13 @@ def test_run_uses_polygon_when_key_present(
 
     # Patch the make_provider symbol THE ROUTER MODULE imported — patching it
     # at the lib site would not affect the already-imported reference.
-    monkeypatch.setattr(
-        router_module, "make_provider", lambda supabase_client=None: mock_provider
-    )
+    monkeypatch.setattr(router_module, "make_provider", lambda supabase_client=None: mock_provider)
 
     resp = client.post("/tools/ma-crossover-backtest/run", json=_payload())
     assert resp.status_code == 200, resp.text
 
     mock_provider.get_eod.assert_called_once()
-    args, kwargs = mock_provider.get_eod.call_args
+    args, _kwargs = mock_provider.get_eod.call_args
     # Signature is get_eod(ticker, start, end)
     assert args[0] == "SPY"
     assert args[1] == date(2023, 1, 1)
@@ -106,9 +101,7 @@ def test_run_uses_polygon_when_key_present(
     assert body["data_source"] == "polygon"
 
 
-def test_run_falls_back_to_yfinance_when_no_key(
-    client, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_run_falls_back_to_yfinance_when_no_key(client, monkeypatch: pytest.MonkeyPatch) -> None:
     """No POLYGON_API_KEY → fallback provider → vendored yfinance code path."""
     # Force the factory into the fallback branch even if a key is in the env.
     monkeypatch.setattr(
@@ -126,9 +119,7 @@ def test_run_falls_back_to_yfinance_when_no_key(
 
     from api.lib.ma_crossover_backtest import _polygon_adapter
 
-    monkeypatch.setattr(
-        _polygon_adapter, "load_close", lambda ticker, *, start, end: fake_close
-    )
+    monkeypatch.setattr(_polygon_adapter, "load_close", lambda ticker, *, start, end: fake_close)
 
     resp = client.post("/tools/ma-crossover-backtest/run", json=_payload())
     assert resp.status_code == 200, resp.text
@@ -137,16 +128,12 @@ def test_run_falls_back_to_yfinance_when_no_key(
     assert body["data_source"] == "yfinance"
 
 
-def test_data_source_field_in_response(
-    client, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_data_source_field_in_response(client, monkeypatch: pytest.MonkeyPatch) -> None:
     """Regardless of path, the response must include a valid data_source."""
     fake_frame = _synthetic_ohlcv()
     mock_provider = MagicMock(spec=PolygonProvider)
     mock_provider.get_eod.return_value = fake_frame
-    monkeypatch.setattr(
-        router_module, "make_provider", lambda supabase_client=None: mock_provider
-    )
+    monkeypatch.setattr(router_module, "make_provider", lambda supabase_client=None: mock_provider)
 
     resp = client.post("/tools/ma-crossover-backtest/run", json=_payload())
     assert resp.status_code == 200, resp.text
