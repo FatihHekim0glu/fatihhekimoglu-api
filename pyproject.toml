@@ -124,6 +124,7 @@ module = [
     "wsb_sentiment.*",
     "finbert_sentiment.*",
     "edgar_nlp.*",
+    "gnnstocks.*",
 ]
 ignore_missing_imports = true
 

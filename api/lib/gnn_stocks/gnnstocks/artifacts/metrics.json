@@ -1,0 +1,68 @@
+{
+  "config": {
+    "graph_types": [
+      "corr_knn",
+      "sector",
+      "none"
+    ],
+    "horizon": 1,
+    "lookback": 60,
+    "models": [
+      "naive",
+      "ridge",
+      "gcn",
+      "graphsage"
+    ],
+    "n_assets": 40,
+    "n_blocks": 5,
+    "n_features": 3,
+    "n_folds": 4,
+    "n_hp_configs": 1,
+    "n_obs": 1500,
+    "seed": 7
+  },
+  "data_source": "synthetic",
+  "manifest": {
+    "config_hash": "d23e582045a1956fcb5796ca6e9ad698",
+    "dirty": true,
+    "extra": {},
+    "git_sha": "d4bc721",
+    "seed": 7
+  },
+  "n_effective_trials": 12,
+  "summary": {
+    "best_baseline": "ridge",
+    "best_model": "ridge",
+    "deflated_sharpe": {
+      "gcn": 0.31930578596028125,
+      "graphsage": 0.26643545581490735,
+      "naive": 0.6250704234639077,
+      "ridge": 0.7278576848761886
+    },
+    "dm_pvalue_vs_baseline": {
+      "gcn": 0.2554797359313832,
+      "graphsage": 0.4145407944907279
+    },
+    "ic_by_model": {
+      "gcn": -0.003628155878816247,
+      "graphsage": -0.00015132184888282425,
+      "naive": 0.0037460685655807606,
+      "ridge": 0.00534565921882995
+    },
+    "ls_sharpe_by_model": {
+      "gcn": -0.01219256871948454,
+      "graphsage": -0.01637956631330051,
+      "naive": 0.009049880144132424,
+      "ridge": 0.016820471724680517
+    }
+  },
+  "verdict": {
+    "best_baseline": "ridge",
+    "best_gnn_model": "none",
+    "deflated_sharpe": 0.0,
+    "dm_pvalue": 1.0,
+    "gnn_beats_baseline": false,
+    "n_effective_trials": 12,
+    "verdict": "no_significant_difference"
+  }
+}
