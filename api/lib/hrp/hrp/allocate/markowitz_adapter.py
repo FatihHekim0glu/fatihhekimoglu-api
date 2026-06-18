@@ -7,7 +7,7 @@ expected-return vector, which is supplied as an ADR-documented shrunk ``mu`` (se
 
 Both follow the never-invert-Sigma discipline (Cholesky solve, not explicit
 inverse) and raise :class:`SingularCovarianceError` when the covariance cannot be
-factored — in deliberate contrast to HRP, which survives that case.
+factored - in deliberate contrast to HRP, which survives that case.
 
 cvxpy is LAZILY imported inside :func:`max_sharpe_weights` only; importing this
 module has no side effects and does not require cvxpy to be installed.

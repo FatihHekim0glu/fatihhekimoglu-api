@@ -177,7 +177,7 @@ def validate(df: pd.DataFrame, ticker: str) -> DataQualityReport:
 
     # Split/dividend adjustment in yfinance introduces sub-bp rounding errors
     # that occasionally break OHLC ordering on adjusted prices. We allow a
-    # 1bp relative tolerance — well below any cost we model. Only flag a bar
+    # 1bp relative tolerance - well below any cost we model. Only flag a bar
     # when Low *materially* exceeds min(O,C) (or High materially below
     # max(O,C)).
     tol = 1e-4
@@ -243,7 +243,7 @@ def load_ohlcv(
     )
     # df is initialised here so pyright can prove it's bound after either branch.
     # Mutating cache_hit inside the except clause is not enough for pyright to
-    # narrow the second `if df is None` — using the Optional+sentinel pattern
+    # narrow the second `if df is None` - using the Optional+sentinel pattern
     # makes the binding contract explicit.
     df: pd.DataFrame | None = None
     if cache_hit:

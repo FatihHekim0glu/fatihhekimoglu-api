@@ -6,14 +6,14 @@ Wires CORS, health, and per-tool routers. Adding a new tool means:
   2. Create api/routers/<slug>.py with a router named `router`
   3. Import + include here
 
-That's it — no platform-side changes required.
+That's it - no platform-side changes required.
 """
 
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

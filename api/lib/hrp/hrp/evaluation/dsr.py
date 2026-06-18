@@ -1,7 +1,7 @@
 """Probabilistic and Deflated Sharpe ratios (Bailey & Lopez de Prado, 2014).
 
 These overfitting guards adjust a realized Sharpe ratio for sample length,
-non-normality (skew and kurtosis), and — for the Deflated Sharpe — the number of
+non-normality (skew and kurtosis), and - for the Deflated Sharpe - the number of
 configurations tried (multiple-testing / selection bias). The Deflated Sharpe is
 the honest yardstick that counts the FULL configuration grid as ``n_trials``.
 

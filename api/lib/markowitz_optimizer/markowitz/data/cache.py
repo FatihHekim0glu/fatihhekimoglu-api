@@ -94,7 +94,7 @@ def read_cache(
 ) -> pd.DataFrame | None:
     """Read a cached dataframe, returning ``None`` on miss or corruption.
 
-    This function never raises — corruption is signalled via a
+    This function never raises - corruption is signalled via a
     :class:`CacheCorruptionWarning` and a ``None`` return so callers can
     transparently fall back to re-fetching.
     """

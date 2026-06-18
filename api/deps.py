@@ -17,7 +17,7 @@ def get_supabase() -> Client | None:
     """Return a service-role Supabase client, or None when not configured.
 
     Routers should treat a missing client as "cache disabled" and fall through
-    to the underlying compute path — this keeps local dev usable without a key.
+    to the underlying compute path - this keeps local dev usable without a key.
     """
     if not settings.supabase_enabled:
         logger.warning(

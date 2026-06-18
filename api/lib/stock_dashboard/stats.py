@@ -6,10 +6,10 @@ Conventions baked in (verified in tests/test_stats.py):
     defaults to auto_adjust=True, so Close is already adjusted.
   - Annualisation base = 252 trading days (NYSE/Nasdaq). 365 is wrong here.
   - CAGR is geometric: (1 + cum_return) ** (252 / n) - 1.
-    Never returns.mean() * 252 — that ignores compounding (volatility drag).
+    Never returns.mean() * 252 - that ignores compounding (volatility drag).
   - Volatility uses SAMPLE std (ddof=1) × √252. Matches CFA / Excel STDEV.S.
     Note this is the OPPOSITE convention from Bollinger Bands (which use
-    population std, ddof=0) — same calculation, different statistical role.
+    population std, ddof=0) - same calculation, different statistical role.
   - Sharpe ratio assumes rf = 0 by default; the UI must label it as such.
     For a non-zero rf, convert annual to daily via (1 + rf) ** (1/252) - 1,
     NOT rf / 252.
@@ -44,7 +44,7 @@ def summary(close: pd.Series, rf_annual: float = 0.0) -> Summary:
 
     See the module docstring for the exact conventions.
 
-    Raises ValueError if `close` has fewer than 2 observations — every stat
+    Raises ValueError if `close` has fewer than 2 observations - every stat
     here needs at least one return to be well-defined, and pct_change.dropna()
     on a single price gives an empty series that crashes the annualisation step.
     """
@@ -69,7 +69,7 @@ def summary(close: pd.Series, rf_annual: float = 0.0) -> Summary:
 
     # Floor the running peak at 1.0 (initial wealth). Otherwise a loss on the
     # first return drops the equity curve below 1.0 immediately, and cummax
-    # takes the post-drop value as the initial peak — drawdown then understates
+    # takes the post-drop value as the initial peak - drawdown then understates
     # the loss and is completely blind to scenarios like [100, 1, 1, ...] where
     # the entire decline happens on day 1.
     equity = (1 + returns).cumprod()

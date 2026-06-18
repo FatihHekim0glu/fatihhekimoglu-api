@@ -8,7 +8,7 @@ with unit variance, the eigenvalue density has a continuous bulk supported on
     σ²  = trace(C) / N             (trace-preserving normalisation)
 
 Empirical eigenvalues that lie outside the bulk are interpreted as "signal"
-— statistically incompatible with pure noise — and the rest as "bulk" (the
+- statistically incompatible with pure noise - and the rest as "bulk" (the
 indistinguishable-from-random noise floor).
 
 This module is pure NumPy and stateless.
@@ -54,7 +54,7 @@ def marchenko_pastur_bulk(
         raise ValueError("n_assets and n_obs must be positive")
     q = n_obs / n_assets
     # MP requires q > 0; when q < 1 the bulk picks up a point mass at zero
-    # which we don't model — surfaces still as positive edges.
+    # which we don't model - surfaces still as positive edges.
     factor = np.sqrt(n_assets / n_obs)
     lambda_min = float(sigma_sq * (1.0 - factor) ** 2)
     lambda_max = float(sigma_sq * (1.0 + factor) ** 2)
@@ -83,7 +83,7 @@ def bulk_density(
         ρ(λ) = (1 / (2π σ² λ)) · (T/N) · √((λ_+ − λ)(λ − λ_-))   for λ ∈ [λ_-, λ_+]
 
     and zero elsewhere. We do not add the Dirac mass at the origin for the
-    over-sampled ``q < 1`` case — callers should not pass such inputs in
+    over-sampled ``q < 1`` case - callers should not pass such inputs in
     practice (we always have ``T ≫ N``).
     """
     edges = marchenko_pastur_bulk(n_assets, n_obs, sigma_sq=sigma_sq)

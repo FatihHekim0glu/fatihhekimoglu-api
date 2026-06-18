@@ -1,4 +1,4 @@
-"""Tests for src.data — yfinance + Stooq fallback + cache key.
+"""Tests for src.data - yfinance + Stooq fallback + cache key.
 
 Network-hitting tests must be marked @pytest.mark.slow so the fast suite stays
 offline. Pure-Python helpers (trading_day_stamp, ticker mapping) are tested
@@ -12,7 +12,6 @@ from datetime import UTC, date, datetime, timedelta
 
 import pandas as pd
 import pytest
-
 from src import data
 
 # Resolve DataFetchError defensively so tests are still collectable if the
@@ -21,7 +20,7 @@ DataFetchError = getattr(data, "DataFetchError", Exception)
 
 
 # ---------------------------------------------------------------------------
-# trading_day_stamp — boundary cases around the 21:00 UTC flip
+# trading_day_stamp - boundary cases around the 21:00 UTC flip
 # ---------------------------------------------------------------------------
 
 
@@ -70,7 +69,7 @@ def test_trading_day_stamp_boundaries(monkeypatch, fixed_now, expected_offset_da
 
 
 # ---------------------------------------------------------------------------
-# Ticker mapping — yfinance ".L" → Stooq ".UK"
+# Ticker mapping - yfinance ".L" → Stooq ".UK"
 # ---------------------------------------------------------------------------
 
 
@@ -125,7 +124,7 @@ def test_fetch_invalid_ticker_raises_clean():
 
 
 # ---------------------------------------------------------------------------
-# Stooq CSV fallback — unit tests (no network) via monkeypatched urlopen
+# Stooq CSV fallback - unit tests (no network) via monkeypatched urlopen
 # ---------------------------------------------------------------------------
 
 
@@ -186,7 +185,7 @@ class TestStooqFallback:
             data._fetch_stooq_csv("spy", self._START, self._END)
 
     def test_response_exceeding_size_cap(self, monkeypatch):
-        # Build a body just over the 10 MB cap. Content is arbitrary —
+        # Build a body just over the 10 MB cap. Content is arbitrary -
         # the size-check fires before any CSV parsing happens.
         oversized = b"x" * (data._STOOQ_MAX_BYTES + 100)
         _patch_urlopen(monkeypatch, oversized)
@@ -248,7 +247,7 @@ def test_fallback_to_stooq_on_yfinance_failure(monkeypatch, caplog, fresh_cache)
 
 
 # ---------------------------------------------------------------------------
-# fetch_ohlcv unit tests — yfinance retry orchestration with isolated cache
+# fetch_ohlcv unit tests - yfinance retry orchestration with isolated cache
 # ---------------------------------------------------------------------------
 
 
@@ -312,7 +311,7 @@ class TestFetchOhlcvCachePath:
         cache_key = f"{data._CACHE_VERSION}|TEST|{self._START.isoformat()}|{self._END.isoformat()}|{data.trading_day_stamp()}"
         fresh_cache.set(cache_key, expected)
 
-        # If yfinance is touched, the test fails loudly — proves cache short-circuits.
+        # If yfinance is touched, the test fails loudly - proves cache short-circuits.
         def _boom(*args, **kwargs):
             raise AssertionError("yf.Ticker should not be called on cache hit")
 
@@ -329,7 +328,7 @@ class TestFetchOhlcvCachePath:
         monkeypatch.setattr(data.time, "sleep", lambda *_a, **_kw: None)
 
         first = data.fetch_ohlcv("TEST", self._START, self._END)
-        # Second call must NOT invoke yf.Ticker again — proves key reuse.
+        # Second call must NOT invoke yf.Ticker again - proves key reuse.
         monkeypatch.setattr(
             data.yf,
             "Ticker",
@@ -370,7 +369,7 @@ class TestFetchOhlcvYfinancePaths:
         factory = _FakeTickerFactory(lambda n, *a, **kw: empty)
         monkeypatch.setattr(data.yf, "Ticker", factory)
 
-        # No-op sleep — exercises the backoff branch without blocking.
+        # No-op sleep - exercises the backoff branch without blocking.
         sleep_calls: list[float] = []
         monkeypatch.setattr(data.time, "sleep", lambda s: sleep_calls.append(s))
 

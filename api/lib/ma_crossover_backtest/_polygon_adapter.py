@@ -1,6 +1,6 @@
 """Polygon-backed adapter for ma-crossover-backtest's close-price fetch.
 
-The vendored data.py module is preserved byte-for-byte — adding the Polygon
+The vendored data.py module is preserved byte-for-byte - adding the Polygon
 path here keeps the upstream fork clean. The router calls
 ``load_close_via_provider`` instead of ``data.load_close`` when it has a
 provider in hand.
@@ -50,7 +50,7 @@ def load_close_via_provider(
         ``data_source`` is ``"polygon"`` when the real Polygon path served the
         bars, ``"yfinance"`` when the local parquet/yfinance fallback ran.
         ``"cache"`` is reserved for a future fast-path that proves every bar
-        came from the Supabase cache without re-fetching — today the provider
+        came from the Supabase cache without re-fetching - today the provider
         merges cache + Polygon transparently so we cannot distinguish.
     """
     ticker = ticker.strip().upper()

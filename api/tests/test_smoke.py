@@ -1,6 +1,6 @@
 """Smoke tests: app boots and the anchor endpoint returns its full payload.
 
-Network-free — the anchor endpoint only reads the local clock and the
+Network-free - the anchor endpoint only reads the local clock and the
 pandas-market-calendars XNYS schedule (bundled in the wheel).
 """
 

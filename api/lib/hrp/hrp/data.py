@@ -245,7 +245,7 @@ def compute_returns(prices: PricesLike) -> pd.DataFrame:
     r"""Convert a price panel to simple returns.
 
     NO-LOOKAHEAD REQUIREMENT: returns are computed with
-    ``prices.pct_change(fill_method=None)`` — prices are NEVER forward-filled
+    ``prices.pct_change(fill_method=None)`` - prices are NEVER forward-filled
     before differencing, because ffill-then-diff manufactures spurious zero
     returns across gaps and leaks information. The first (all-NaN) row is dropped.
 

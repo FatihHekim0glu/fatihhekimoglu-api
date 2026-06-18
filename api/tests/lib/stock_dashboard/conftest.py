@@ -1,6 +1,6 @@
 """Shared pytest fixtures.
 
-`spy_ohlcv` loads a real OHLCV CSV (place SPY_D.csv in tests/data/) — skipped
+`spy_ohlcv` loads a real OHLCV CSV (place SPY_D.csv in tests/data/) - skipped
 when missing so the rest of the suite still runs on a fresh clone.
 `synthetic_ohlcv` produces deterministic random-walk data for plumbing tests.
 The `constant_series`, `monotone_up_series`, `monotone_down_series` fixtures

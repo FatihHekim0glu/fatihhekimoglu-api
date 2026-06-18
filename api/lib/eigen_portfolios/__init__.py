@@ -2,11 +2,11 @@
 
 Public surface:
 
-  - :func:`eigen_decompose` — PCA on a returns panel, returns sorted eigvals,
+  - :func:`eigen_decompose` - PCA on a returns panel, returns sorted eigvals,
     eigvecs, factor returns, and per-component variance shares.
-  - :func:`marchenko_pastur_bulk` — RMT bulk-edge ``λ_+/-`` for a given ``(N, T,
+  - :func:`marchenko_pastur_bulk` - RMT bulk-edge ``λ_+/-`` for a given ``(N, T,
     σ²)``.
-  - :func:`fit_sigma` — trace-preserving estimate of ``σ²`` so that the bulk
+  - :func:`fit_sigma` - trace-preserving estimate of ``σ²`` so that the bulk
     matches the empirical eigenvalue spread.
 
 Numpy-only, no I/O. The router layer is responsible for loading prices, calling

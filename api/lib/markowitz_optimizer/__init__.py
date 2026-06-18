@@ -1,4 +1,4 @@
-"""Vendored copy of markowitz-optimizer/src — DO NOT EDIT IN PLACE.
+"""Vendored copy of markowitz-optimizer/src - DO NOT EDIT IN PLACE.
 
 Re-vendor from `~/markowitz-optimizer/src/markowitz` if upstream changes.
 

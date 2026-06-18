@@ -1,6 +1,6 @@
 """Polygon.io REST client with Supabase-backed OHLCV caching.
 
-Public surface is :class:`PolygonProvider` plus :func:`make_provider` — the
+Public surface is :class:`PolygonProvider` plus :func:`make_provider` - the
 factory selects the real provider when ``POLYGON_API_KEY`` is set, otherwise
 falls back to the existing yfinance/Stooq pipeline so local dev keeps working
 without a key.
@@ -9,7 +9,7 @@ Cache semantics
 ---------------
 ``get_eod`` checks ``platform.ohlcv_cache`` filtered on ``source='polygon'``.
 If every expected trading day is present, the cached frame is returned. If any
-day is missing, the FULL window is re-fetched from Polygon and upserted — this
+day is missing, the FULL window is re-fetched from Polygon and upserted - this
 keeps the request count low (one network call per range) at the cost of mildly
 redundant cell writes, which Postgres handles via the (symbol,date) PK conflict.
 
@@ -25,7 +25,7 @@ A simple token bucket caps outbound traffic at ~100 requests/minute (Starter
 tier ceiling). Each transient failure (429 / 5xx / network) triggers
 exponential backoff with three attempts (1s, 2s, 4s + jitter). The bucket is
 process-local; the assumption is that we run one API server instance per Fly
-region — revisit when we scale out.
+region - revisit when we scale out.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ _HTTP_TIMEOUT = 30.0
 
 
 class _TokenBucket:
-    """Sliding-window rate limiter — at most ``rpm`` requests per 60 seconds."""
+    """Sliding-window rate limiter - at most ``rpm`` requests per 60 seconds."""
 
     def __init__(self, rpm: int = _STARTER_RPM) -> None:
         self._rpm = rpm
@@ -265,7 +265,7 @@ class PolygonProvider:
                 continue
             # Polygon's daily aggregates encode the trading day as the UTC
             # midnight timestamp of that calendar date. Do NOT shift to
-            # America/New_York — that would move the bar back one day.
+            # America/New_York - that would move the bar back one day.
             records.append(
                 {
                     "Date": pd.Timestamp(ts_ms, unit="ms", tz="UTC")
@@ -307,7 +307,7 @@ class PolygonProvider:
                 .order("date")
                 .execute()
             )
-        except Exception:  # noqa: BLE001 — cache is opportunistic
+        except Exception:  # noqa: BLE001 - cache is opportunistic
             logger.exception("ohlcv_cache read failed for %s (non-fatal)", ticker)
             return None
         rows = getattr(response, "data", None) or []
@@ -356,7 +356,7 @@ class PolygonProvider:
             self._supabase.schema("platform").table("ohlcv_cache").upsert(
                 rows, on_conflict="symbol,date"
             ).execute()
-        except Exception:  # noqa: BLE001 — cache is opportunistic
+        except Exception:  # noqa: BLE001 - cache is opportunistic
             logger.exception("ohlcv_cache upsert failed for %s (non-fatal)", ticker)
 
     @staticmethod
@@ -364,7 +364,7 @@ class PolygonProvider:
         """Approximate count of US trading days in ``[start, end]``.
 
         Uses pandas business-day count, which ignores US holidays. Good enough
-        for the cache-completeness check — when it overcounts by a holiday, the
+        for the cache-completeness check - when it overcounts by a holiday, the
         worst case is one extra Polygon round-trip.
         """
         if start > end:
@@ -422,10 +422,10 @@ def make_provider(
     api_key = os.environ.get("POLYGON_API_KEY", "").strip()
     if api_key:
         return PolygonProvider(api_key=api_key, supabase_client=supabase_client)
-    logger.info("POLYGON_API_KEY not set — using yfinance/Stooq fallback provider")
+    logger.info("POLYGON_API_KEY not set - using yfinance/Stooq fallback provider")
     return PolygonProviderFallback(supabase_client=supabase_client)
 
 
-# Silence "imported but unused" for datetime/timedelta — kept for future use in
+# Silence "imported but unused" for datetime/timedelta - kept for future use in
 # rate-limit reset windows. (Removed if linter complains.)
 _ = (datetime, timedelta)

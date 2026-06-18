@@ -45,7 +45,7 @@ class CacheCorruptError(DataLayerError):
     """Raised when a cache file exists but cannot be deserialized.
 
     Note: :func:`markowitz.data.cache.read_cache` deliberately *does not*
-    raise this — it warns and returns ``None`` so callers can transparently
+    raise this - it warns and returns ``None`` so callers can transparently
     fall back to a fresh fetch. The exception exists for explicit callers
     that want hard failures.
     """

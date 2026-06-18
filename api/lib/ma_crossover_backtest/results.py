@@ -23,7 +23,7 @@ class BacktestResult:
         Equity curve, indexed by date, starting at ``initial_cash``.
     positions : pd.Series
         Realised position held over each bar, in {0, 1} for long/flat.
-        Already shifted by one bar — this is what was held *into* bar t.
+        Already shifted by one bar - this is what was held *into* bar t.
     daily_returns : pd.Series
         Net daily returns of the strategy (gross minus cost on turnover).
     trades : pd.DataFrame

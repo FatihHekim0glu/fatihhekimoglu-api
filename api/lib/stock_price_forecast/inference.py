@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Suppress noisy TF logs before any TF import (matches main.py:22).
 os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
-# 14-feature ordered list — must match app.py:98-99 exactly.
+# 14-feature ordered list - must match app.py:98-99 exactly.
 FEATURES: list[str] = [
     "Close",
     "RSI",
@@ -53,7 +53,7 @@ LOOK_BACK: int = 60
 
 _MODEL_PATH = Path(__file__).parent / "stock_model.h5"
 
-# Lazy-loaded singleton — load is ~1-2s and TF init is heavy.
+# Lazy-loaded singleton - load is ~1-2s and TF init is heavy.
 _model: Any = None
 _model_lock = threading.Lock()
 
