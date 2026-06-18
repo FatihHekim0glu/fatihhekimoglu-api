@@ -282,6 +282,7 @@ def make_folds(
     n_samples: int,
     *,
     look_back: int = 60,
+    horizon: int = 1,
     n_folds: int = 3,
     test_size: int | None = None,
     embargo: int = 5,
@@ -289,10 +290,12 @@ def make_folds(
 ) -> list[Fold]:
     """Build anchored/expanding walk-forward folds with purge + embargo.
 
-    Each fold's train slice is followed by a purge gap of at least ``look_back``
-    samples (so no window straddles the boundary), then the test slice, then an
-    ``embargo`` gap before the next fold. With ``anchored=True`` the train slice
-    always starts at sample 0 and expands; otherwise it rolls forward.
+    Each fold's train slice is followed by a purge gap of at least
+    ``look_back + horizon - 1`` samples (so neither a window nor its
+    ``horizon``-step-ahead label can straddle the boundary), then the test
+    slice, then an ``embargo`` gap before the next fold. With ``anchored=True``
+    the train slice always starts at sample 0 and expands; otherwise it rolls
+    forward.
 
     Parameters
     ----------
@@ -300,7 +303,14 @@ def make_folds(
         Total number of windowed samples (the output length of
         :func:`make_windows`).
     look_back:
-        The window length; the purge gap is clamped up to this value.
+        The window length.
+    horizon:
+        The forecast horizon used to build the windows. The purge gap is
+        ``look_back + horizon - 1`` so the last train sample's
+        ``horizon``-step-ahead label (at row ``train_end - 1 + look_back +
+        horizon - 1``) lands strictly before the first test window's input rows
+        — closing the boundary train-label/test-feature overlap that a
+        horizon-unaware ``purge = look_back`` leaves open for ``horizon > 1``.
     n_folds:
         Number of out-of-sample test blocks.
     test_size:
@@ -326,6 +336,8 @@ def make_folds(
         raise ValidationError(f"make_folds: n_samples must be >= 1, got {n_samples}.")
     if look_back < 0:
         raise ValidationError(f"make_folds: look_back must be >= 0, got {look_back}.")
+    if horizon < 1:
+        raise ValidationError(f"make_folds: horizon must be >= 1, got {horizon}.")
     if n_folds < 1:
         raise ValidationError(f"make_folds: n_folds must be >= 1, got {n_folds}.")
     if embargo < 0:
@@ -333,9 +345,11 @@ def make_folds(
     if test_size is not None and test_size < 1:
         raise ValidationError(f"make_folds: test_size must be >= 1 when given, got {test_size}.")
 
-    # The purge gap is at least ``look_back`` samples so no look_back-length window
-    # can straddle a train/test boundary (the headline anti-leakage guard).
-    purge = look_back
+    # The purge gap is ``look_back + horizon - 1`` samples so neither a
+    # look_back-length window NOR its horizon-step-ahead label can straddle a
+    # train/test boundary (the headline anti-leakage guard). At horizon=1 this
+    # reduces to look_back; at horizon>1 it adds the extra label lead.
+    purge = look_back + horizon - 1
 
     # Reserve a warm-up region of at least one (rolling: ``look_back``) training
     # sample(s) before the FIRST purge, so every fold's train slice is non-empty.

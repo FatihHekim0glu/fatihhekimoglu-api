@@ -355,11 +355,13 @@ def _split_for_serving(
     spec = WindowSpec(look_back=int(lookback), horizon=int(horizon), target=target)
     try:
         x_all, y_all = make_windows(panel, spec)
-        # One anchored fold gives the purged train/test boundary; purge >= look_back
-        # guarantees no window straddles the split.
+        # One anchored fold gives the purged train/test boundary; purge =
+        # look_back + horizon - 1 guarantees neither a window nor its
+        # horizon-step-ahead label straddles the split.
         folds = make_folds(
             int(x_all.shape[0]),
             look_back=int(lookback),
+            horizon=int(horizon),
             n_folds=1,
             embargo=max(1, int(lookback) // 12),
         )

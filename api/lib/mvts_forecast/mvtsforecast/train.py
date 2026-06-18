@@ -193,6 +193,7 @@ def train_pipeline(
     folds = make_folds(
         int(x_all.shape[0]),
         look_back=int(lookback),
+        horizon=int(horizon),
         n_folds=1,
         embargo=max(1, int(lookback) // 12),
     )
