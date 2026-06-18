@@ -110,6 +110,7 @@ module = [
     "regimehmm.*",
     "anomaly_detector.*",
     "lstmforecast.*",
+    "nnvsbs.*",
     "onnxruntime.*",
     "volforecast.*",
     "arch.*",

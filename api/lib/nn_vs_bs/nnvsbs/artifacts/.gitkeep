@@ -1,0 +1,4 @@
+# The committed, shipped ONNX MLP pricer (nn_vs_bs_mlp.onnx) is written here by
+# `nn-vs-bs train` (train_synthetic_mlp). This placeholder keeps the directory
+# tracked before the first artifact is produced. The serve path resolves
+# artifacts/nn_vs_bs_mlp.onnx via default_artifact_path().
