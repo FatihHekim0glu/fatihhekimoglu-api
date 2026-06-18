@@ -1,6 +1,6 @@
 """Allocators: HRP, IVP, naive 1/N, and the Markowitz adapter.
 
-Each allocator maps a (shared) covariance — and, for max-Sharpe, a shrunk mu —
+Each allocator maps a (shared) covariance - and, for max-Sharpe, a shrunk mu -
 to simplex weights. Importing this subpackage has no side effects (cvxpy is
 imported lazily only inside the max-Sharpe function).
 """

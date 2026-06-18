@@ -61,7 +61,7 @@ def _synthetic_ohlcv(n: int = 320, *, end: str = "2024-12-31") -> pd.DataFrame:
 
 
 def _payload(start: str = "2023-01-01", end: str = "2024-12-31") -> dict[str, object]:
-    """A small, valid request body — fast/slow narrow enough to keep tests <1s."""
+    """A small, valid request body - fast/slow narrow enough to keep tests <1s."""
     return {
         "ticker": "SPY",
         "start_date": start,
@@ -83,7 +83,7 @@ def test_run_uses_polygon_when_key_present(client, monkeypatch: pytest.MonkeyPat
     mock_provider = MagicMock(spec=PolygonProvider)
     mock_provider.get_eod.return_value = fake_frame
 
-    # Patch the make_provider symbol THE ROUTER MODULE imported — patching it
+    # Patch the make_provider symbol THE ROUTER MODULE imported - patching it
     # at the lib site would not affect the already-imported reference.
     monkeypatch.setattr(router_module, "make_provider", lambda supabase_client=None: mock_provider)
 
@@ -111,7 +111,7 @@ def test_run_falls_back_to_yfinance_when_no_key(client, monkeypatch: pytest.Monk
     )
 
     # The fallback provider's get_eod hits stock_dashboard.data.fetch_ohlcv,
-    # which we don't want online either — but the ma-crossover adapter ALSO
+    # which we don't want online either - but the ma-crossover adapter ALSO
     # detects the fallback and routes through vendor_data.load_close instead.
     # Patch the load_close inside the adapter module (where it's bound).
     fake_frame = _synthetic_ohlcv()

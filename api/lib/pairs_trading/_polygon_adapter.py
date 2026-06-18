@@ -5,7 +5,7 @@ Bridges the shared :class:`PolygonProvider` to the
 ``pairs.selection.screen_cointegration`` (via the router's
 ``_flatten_close_prices``) expects.
 
-Keeping the adapter here — outside the vendored ``_vendor/`` tree — preserves
+Keeping the adapter here - outside the vendored ``_vendor/`` tree - preserves
 the rule that vendored sources are never edited. The router decides whether
 to call this adapter (Polygon path) or fall back to the vendored
 ``load_prices`` (yfinance path).
@@ -41,7 +41,7 @@ def load_prices_via_provider(
 
     Per-ticker failures are logged and the symbol is dropped from the result
     (mirroring the vendored loader's behaviour). Range is half-open ``[start,
-    end)``, but Polygon EOD bounds are inclusive — we subtract one day from
+    end)``, but Polygon EOD bounds are inclusive - we subtract one day from
     ``end`` to keep parity.
     """
     if not tickers:
@@ -60,7 +60,7 @@ def load_prices_via_provider(
     for ticker in tickers:
         try:
             df = provider.get_eod(ticker, start_d, end_d)
-        except Exception as exc:  # noqa: BLE001 — degrade per-ticker
+        except Exception as exc:  # noqa: BLE001 - degrade per-ticker
             logger.warning(
                 "polygon get_eod(%s) failed (%s); skipping",
                 ticker,

@@ -2,7 +2,7 @@
 
 The headline verdict is a PURE FUNCTION of the inference outputs
 ``(jkm_pvalue, deflated_sharpe, ci_low, ci_high)`` from a fixed enum. It cannot
-emit "HRP beats 1/N" while the bootstrap confidence interval straddles zero — the
+emit "HRP beats 1/N" while the bootstrap confidence interval straddles zero - the
 truth table is unit-tested. This is what keeps the README honest: the verdict is
 derived, not narrated.
 
@@ -32,7 +32,7 @@ class Verdict(str, Enum):
     HRP_LOSES_TO_1N = "hrp_loses_to_1n"
 
     #: The gap is not statistically distinguishable from zero (CI straddles zero
-    #: or JKM is insignificant) — the expected, literature-consistent outcome.
+    #: or JKM is insignificant) - the expected, literature-consistent outcome.
     NO_SIGNIFICANT_DIFFERENCE = "no_significant_difference"
 
 

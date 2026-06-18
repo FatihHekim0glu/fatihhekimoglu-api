@@ -67,7 +67,7 @@ def correl_dist(corr: MatrixLike) -> pd.DataFrame:
     frame = _ensure_square(corr, name="corr")
 
     values = frame.to_numpy()
-    # HONESTY REQUIREMENT: domain check — a correlation matrix must live in
+    # HONESTY REQUIREMENT: domain check - a correlation matrix must live in
     # [-1, 1]. A small tolerance absorbs floating-point drift from estimation.
     tol = 1e-8
     if float(np.nanmin(values)) < -1.0 - tol or float(np.nanmax(values)) > 1.0 + tol:

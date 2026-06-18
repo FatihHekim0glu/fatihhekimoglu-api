@@ -13,7 +13,7 @@ Known limitations
   delisted / acquired (e.g. Lehman Brothers, EMC, Sprint). Those are
   pure-survivor blind spots and bias backtests upward on average.
 - Includes companies that are in the snapshot today but were not yet in
-  the index on the as-of date — they only get filtered out when they had
+  the index on the as-of date - they only get filtered out when they had
   no Polygon grouped-daily row (e.g. pre-IPO). For modern tickers added
   to the index after IPO, this overcounts.
 
@@ -176,7 +176,7 @@ class SP500UniverseBuilder:
                 .order("ticker")
                 .execute()
             )
-        except Exception:  # noqa: BLE001 — cache is opportunistic
+        except Exception:  # noqa: BLE001 - cache is opportunistic
             logger.exception("sp500_membership read failed (non-fatal)")
             return []
         rows = getattr(response, "data", None) or []
@@ -190,5 +190,5 @@ class SP500UniverseBuilder:
             self._supabase.schema("platform").table("sp500_membership").upsert(
                 rows, on_conflict="date,ticker"
             ).execute()
-        except Exception:  # noqa: BLE001 — cache is opportunistic
+        except Exception:  # noqa: BLE001 - cache is opportunistic
             logger.exception("sp500_membership upsert failed (non-fatal)")

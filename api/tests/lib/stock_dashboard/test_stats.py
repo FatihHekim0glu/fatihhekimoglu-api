@@ -1,4 +1,4 @@
-"""Tests for src.stats — verify the financial-math conventions.
+"""Tests for src.stats - verify the financial-math conventions.
 
 Covers the closed-form expectations baked into src/stats.py:
 constant-return series, linear ramps, V-shape drawdowns, explicit
@@ -85,7 +85,7 @@ def test_max_drawdown_strictly_increasing_is_zero():
 
 def test_max_drawdown_v_shape_is_minus_half():
     # Prepend a duplicate 100.0 bar so the first daily return is exactly 0
-    # and the equity curve `(1+r).cumprod()` starts at 1.0 — making the peak
+    # and the equity curve `(1+r).cumprod()` starts at 1.0 - making the peak
     # equity 1.0 and the trough 0.5, giving an exact -0.5 drawdown.
     down = np.linspace(100.0, 50.0, 51)  # 51 points, includes both 100 and 50
     up = np.linspace(50.0, 100.0, 51)[1:]  # drop duplicate trough
@@ -124,7 +124,7 @@ def test_sharpe_zero_rf_matches_textbook_formula(synthetic_ohlcv):
     assert s.sharpe == pytest.approx(expected, rel=1e-12)
 
 
-# -- Sharpe with rf == 4% — geometric daily conversion -------------------------
+# -- Sharpe with rf == 4% - geometric daily conversion -------------------------
 
 
 def test_sharpe_nonzero_rf_uses_geometric_daily_conversion(synthetic_ohlcv):
@@ -236,7 +236,7 @@ def test_sharpe_extreme_risk_free_rate_is_finite(synthetic_ohlcv):
 
     # With rf_annual = 1.0 (100% annual), daily rf ~= 2**(1/252) - 1 ~= 0.00276.
     # Most realistic equity series will not beat that → Sharpe goes very
-    # negative — but it MUST still be a finite number, not NaN or inf.
+    # negative - but it MUST still be a finite number, not NaN or inf.
     assert np.isfinite(s.sharpe)
 
 

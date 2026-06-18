@@ -1,1 +1,1 @@
-"""Tool routers — one module per slug."""
+"""Tool routers - one module per slug."""

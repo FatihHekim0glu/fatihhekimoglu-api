@@ -41,7 +41,7 @@ class InsufficientDataError(ValidationError):
 class SingularCovarianceError(HRPError):
     """Raised when a covariance matrix is singular (or numerically so) where invertibility is required.
 
-    HRP itself never inverts the full covariance and so must *not* raise this —
+    HRP itself never inverts the full covariance and so must *not* raise this -
     surviving a singular covariance is the paper's headline robustness claim.
     This error is reserved for the Markowitz adapter and any code path that
     genuinely requires a Cholesky factor / matrix inverse.

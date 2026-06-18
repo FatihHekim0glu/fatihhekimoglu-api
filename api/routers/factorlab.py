@@ -1,7 +1,7 @@
-"""Factorlab tool — wraps factorlab's compute layer unchanged.
+"""Factorlab tool - wraps factorlab's compute layer unchanged.
 
 Endpoint:
-  POST /tools/factorlab/run — fit a Fama-French factor regression for one
+  POST /tools/factorlab/run - fit a Fama-French factor regression for one
   ticker and return alpha (per-period + annualized), factor betas with
   HAC/OLS standard errors, t-stats, p-values, R-squared, observation count,
   the coefficient table, optional rolling-beta Plotly figures, and a
@@ -11,7 +11,7 @@ v1 is single-shot synchronous. Two network round-trips per request:
 
   - yfinance for prices (sub-second with a warm cache)
   - Dartmouth Ken French zip + AQR xlsx for factor data (slow on cold cache,
-    ~instant after — the vendored loaders persist parquet under
+    ~instant after - the vendored loaders persist parquet under
     ``platformdirs.user_cache_dir('factorlab')`` for 25 days)
 
 If long-running becomes a real concern we can hoist this onto a background
@@ -289,7 +289,7 @@ def run(
 
     # ----- rolling betas (best-effort) ---------------------------------
     rolling_charts: list[RollingBetaFigure] = []
-    # Default window: 36 monthly / 252 daily — matches the source rolling.py
+    # Default window: 36 monthly / 252 daily - matches the source rolling.py
     # defaults and is short enough to fit inside typical sample sizes.
     window = 36 if req.frequency == "M" else 252
     if reg.nobs > window:

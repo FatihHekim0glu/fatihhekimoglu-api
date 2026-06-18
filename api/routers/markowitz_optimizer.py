@@ -1,7 +1,7 @@
-"""Markowitz Optimizer tool — wraps the vendored ``markowitz`` library.
+"""Markowitz Optimizer tool - wraps the vendored ``markowitz`` library.
 
 Endpoint:
-  POST /tools/markowitz-optimizer/run — fit estimators, compute efficient
+  POST /tools/markowitz-optimizer/run - fit estimators, compute efficient
   frontier and tangency portfolio, return frontier curve + weights + summary
   + Plotly figure JSON.
 
@@ -143,10 +143,10 @@ class MarkowitzResponse(BaseModel):
     weights: dict[str, float]
     summary: MarkowitzSummary
     frontier_figure: dict[str, Any] = Field(
-        ..., description="Plotly figure JSON: {data, layout} — risk/return scatter."
+        ..., description="Plotly figure JSON: {data, layout} - risk/return scatter."
     )
     weights_figure: dict[str, Any] = Field(
-        ..., description="Plotly figure JSON: {data, layout} — horizontal weights bar."
+        ..., description="Plotly figure JSON: {data, layout} - horizontal weights bar."
     )
     data_source: DataSource
 
@@ -173,7 +173,7 @@ def _parse_ticker_list(tickers: str) -> tuple[str, ...]:
 
 
 # ---------------------------------------------------------------------------
-# Data loading — mirrors app/pages/1_efficient_frontier.py
+# Data loading - mirrors app/pages/1_efficient_frontier.py
 # ---------------------------------------------------------------------------
 
 
@@ -201,12 +201,12 @@ def _synthetic_returns(tickers: tuple[str, ...], start: str, end: str, seed: int
 
 
 def _load_returns(req: MarkowitzRequest) -> tuple[pd.DataFrame, str]:
-    """Legacy yfinance loader — retained for tests / non-provider callers.
+    """Legacy yfinance loader - retained for tests / non-provider callers.
 
     Returns ``(returns_df, data_source)``. Falls back to synthetic on any
     error so the demo still produces a plot when yfinance is unreachable.
     Prefer :func:`_load_returns_via_provider` when a Polygon provider is
-    available — it shares cache with the rest of the platform.
+    available - it shares cache with the rest of the platform.
     """
     tickers = _parse_ticker_list(req.tickers)
     if req.use_real_data:
@@ -321,7 +321,7 @@ def _load_returns_via_provider(
         closes[ticker] = df["Close"].astype(float)
 
     if len(closes) < 2:
-        # Not enough tickers came back — fall back to the legacy loader so
+        # Not enough tickers came back - fall back to the legacy loader so
         # we still produce a plot.
         return _load_returns(req)
 
@@ -389,7 +389,7 @@ def _estimate_mean(
 
 
 def _fallback_frontier(mu: np.ndarray, cov: np.ndarray) -> pd.DataFrame:
-    """Pure-numpy closed-form Merton frontier — kept for the no-cvxpy path."""
+    """Pure-numpy closed-form Merton frontier - kept for the no-cvxpy path."""
     inv = np.linalg.pinv(cov)
     ones = np.ones_like(mu)
     a = float(ones @ inv @ ones)
@@ -404,7 +404,7 @@ def _fallback_frontier(mu: np.ndarray, cov: np.ndarray) -> pd.DataFrame:
 
 
 def _fallback_tangency(mu: np.ndarray, cov: np.ndarray, rf: float) -> np.ndarray:
-    """Pseudo-inverse long-only tangency — graceful degradation when cvxpy is
+    """Pseudo-inverse long-only tangency - graceful degradation when cvxpy is
     unavailable or the QP fails."""
     excess = mu - rf
     raw = np.linalg.pinv(cov) @ excess
@@ -430,7 +430,7 @@ def _compute_frontier(returns: pd.DataFrame, req: MarkowitzRequest) -> dict[str,
     cov = cov_df.to_numpy(dtype=float)
     tickers = list(returns.columns)
 
-    # Frontier — closed-form Merton, falling back to pure numpy if the
+    # Frontier - closed-form Merton, falling back to pure numpy if the
     # analytic factorisation fails (singular covariance, degenerate D).
     try:
         af = AnalyticFrontier(mu, cov)
@@ -442,7 +442,7 @@ def _compute_frontier(returns: pd.DataFrame, req: MarkowitzRequest) -> dict[str,
     except Exception:
         frontier_df = _fallback_frontier(mu, cov)
 
-    # Tangency — long-only box [0, max_weight] when long_only is True; for the
+    # Tangency - long-only box [0, max_weight] when long_only is True; for the
     # long-short case we widen to [-max_weight, max_weight].
     if req.long_only:
         bounds: tuple[float | None, float | None] = (0.0, float(req.max_weight))

@@ -39,7 +39,7 @@ def build_app() -> typer.Typer:
     cli = typer.Typer(
         name="hrp",
         add_completion=False,
-        help="Hierarchical Risk Parity — benchmarked honestly OOS against "
+        help="Hierarchical Risk Parity - benchmarked honestly OOS against "
         "Markowitz, IVP, and naive 1/N.",
         no_args_is_help=True,
     )

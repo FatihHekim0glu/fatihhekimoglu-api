@@ -1,7 +1,7 @@
 """Eigen Portfolios (PCA) tool router.
 
 Endpoint:
-  POST /tools/eigen-portfolios/run — fetch a returns panel, PCA-decompose it,
+  POST /tools/eigen-portfolios/run - fetch a returns panel, PCA-decompose it,
   separate signal/noise eigenvalues via Marchenko-Pastur, return spectrum +
   top-K eigen-portfolios + plotly figures.
 
@@ -357,7 +357,7 @@ def _spectrum_figure(
 
     outliers = int((eigvals > bulk["lambda_max"]).sum())
     fig.update_layout(
-        title=f"Eigenvalue spectrum — {outliers} eigenvalues above the bulk",
+        title=f"Eigenvalue spectrum - {outliers} eigenvalues above the bulk",
         xaxis_title="Eigenvalue λ",
         yaxis_title="Density",
         bargap=0.04,
@@ -523,10 +523,10 @@ def run(
             ),
         )
     if t_obs < _MIN_OBS_PER_N * n_assets:
-        # Soft-warn rather than fail — PCA still runs, but the eigenvalues are
+        # Soft-warn rather than fail - PCA still runs, but the eigenvalues are
         # unstable. The frontend surfaces ``obs`` so the caller can decide.
         logger.warning(
-            "T=%d, N=%d (T < %dN) — PCA spectrum will be noisy",
+            "T=%d, N=%d (T < %dN) - PCA spectrum will be noisy",
             t_obs,
             n_assets,
             _MIN_OBS_PER_N,

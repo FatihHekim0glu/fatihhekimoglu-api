@@ -1,4 +1,4 @@
-"""Technical indicators — hand-rolled in pandas/numpy.
+"""Technical indicators - hand-rolled in pandas/numpy.
 
 All implementations are verified against TA-Lib in tests/test_indicators.py.
 Five non-obvious rules to bake into every implementation:
@@ -7,13 +7,13 @@ Five non-obvious rules to bake into every implementation:
      NOT the common-but-wrong ewm(span=n) (which is alpha = 2/(n+1)).
   2. EMA uses adjust=False and is seeded with an SMA over the first n bars
      so the early values agree with TA-Lib (default pandas seeding diverges
-     for ~50–100 bars before converging).
+     for ~50-100 bars before converging).
   3. Bollinger Bands use population std (ddof=0) to match TA-Lib and
-     Bollinger's own definition — pandas' .std() defaults to ddof=1 (sample),
+     Bollinger's own definition - pandas' .std() defaults to ddof=1 (sample),
      which makes the bands ~3 % narrower at the 20-period default.
   4. All indicators leave warmup periods as NaN. Do not extrapolate, do not
-     fill with zero — the charts rely on NaN to skip the warmup region.
-  5. MACD returns three series — be explicit about (macd_line, signal,
+     fill with zero - the charts rely on NaN to skip the warmup region.
+  5. MACD returns three series - be explicit about (macd_line, signal,
      histogram) ordering; different libraries disagree.
 """
 
@@ -35,7 +35,7 @@ def sma(close: pd.Series, length: int = 20) -> pd.Series:
 
 
 def ema(close: pd.Series, length: int = 12) -> pd.Series:
-    """Exponential moving average — SMA-seeded, adjust=False.
+    """Exponential moving average - SMA-seeded, adjust=False.
 
     Pre-warmup region (first `length-1` bars) is NaN; position `length-1` is
     primed with the SMA of the first `length` closes; from there on the standard
@@ -56,7 +56,7 @@ def ema(close: pd.Series, length: int = 12) -> pd.Series:
 
 
 def bollinger_bands(close: pd.Series, length: int = 20, k: float = 2.0) -> pd.DataFrame:
-    """Bollinger Bands — middle = SMA(length), upper/lower = middle ± k * std.
+    """Bollinger Bands - middle = SMA(length), upper/lower = middle ± k * std.
 
     Returns a DataFrame with columns ['upper', 'middle', 'lower']. Uses
     population std (ddof=0) to match TA-Lib and Bollinger's original
@@ -76,13 +76,13 @@ def bollinger_bands(close: pd.Series, length: int = 20, k: float = 2.0) -> pd.Da
 
 
 def rsi(close: pd.Series, length: int = 14) -> pd.Series:
-    """Relative Strength Index — Wilder's smoothing.
+    """Relative Strength Index - Wilder's smoothing.
 
     Separates up- and down-moves, applies Wilder's RMA to each
     (`ewm(alpha=1/length, adjust=False)` primed with the SMA of the first
     `length` gains/losses). RS = avg_gain / avg_loss; RSI = 100 - 100/(1 + RS).
-    Do NOT use `ewm(span=length)` — that is exponential smoothing with the
-    wrong decay constant and disagrees with TA-Lib / TradingView by 1–3 points.
+    Do NOT use `ewm(span=length)` - that is exponential smoothing with the
+    wrong decay constant and disagrees with TA-Lib / TradingView by 1-3 points.
     """
     if length < 1:
         raise ValueError(f"length must be >= 1, got {length}")

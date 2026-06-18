@@ -1,7 +1,7 @@
 """Router-level tests for the Polygon retrofit of /tools/pairs-trading/run.
 
 All HTTP and Supabase access is faked so the suite stays offline. The
-vendored cointegration scan is monkeypatched to a near-empty result — we
+vendored cointegration scan is monkeypatched to a near-empty result - we
 only care about *which* data path the router took, not the math.
 """
 

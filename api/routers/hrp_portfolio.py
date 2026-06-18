@@ -1,7 +1,7 @@
-"""HRP Portfolio tool — wraps the vendored ``hrp`` library.
+"""HRP Portfolio tool - wraps the vendored ``hrp`` library.
 
 Endpoint:
-  POST /tools/hrp-portfolio/run — run a leakage-guarded walk-forward horse race
+  POST /tools/hrp-portfolio/run - run a leakage-guarded walk-forward horse race
   of Hierarchical Risk Parity (Lopez de Prado, 2016) against 1/N and IVP
   baselines, score the OOS Sharpe gap with Jobson-Korkie-Memmel + a stationary
   block-bootstrap CI + the Deflated Sharpe Ratio, derive an honest headline
@@ -10,7 +10,7 @@ Endpoint:
 Mirrors the Streamlit demo backing the ``hrp`` library: the headline question is
 "does HRP beat the DeMiguel 1/N portfolio out-of-sample, net of costs, after we
 honestly deflate for the configuration grid we explored?" The verdict is a PURE
-function of the inference outputs — it cannot read "HRP beats 1/N" while the
+function of the inference outputs - it cannot read "HRP beats 1/N" while the
 bootstrap CI straddles zero.
 
 v1 is single-shot synchronous: a ~10-ticker / multi-year universe with a 2000-
@@ -222,7 +222,7 @@ def _parse_ticker_list(tickers: str) -> tuple[str, ...]:
 
 
 # ---------------------------------------------------------------------------
-# Data loading — mirrors app/pages/1_efficient_frontier.py (markowitz)
+# Data loading - mirrors app/pages/1_efficient_frontier.py (markowitz)
 # ---------------------------------------------------------------------------
 
 
@@ -296,7 +296,7 @@ def _load_returns_via_provider(
         closes[ticker] = df["Close"].astype(float)
 
     if len(closes) < 2:
-        # Not enough tickers came back — fall back to synthetic so we still
+        # Not enough tickers came back - fall back to synthetic so we still
         # produce a result.
         return _load_returns_synthetic(req)
 

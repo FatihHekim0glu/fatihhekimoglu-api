@@ -1,4 +1,4 @@
-"""Vendored copy of factorlab/factorlab/ — DO NOT EDIT IN PLACE.
+"""Vendored copy of factorlab/factorlab/ - DO NOT EDIT IN PLACE.
 
 Re-vendor from `~/factorlab/factorlab` if upstream changes. The compute
 modules use absolute imports of the form ``from factorlab.X import Y``;

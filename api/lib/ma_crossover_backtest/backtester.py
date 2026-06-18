@@ -11,7 +11,7 @@ The whole computation is one pass of pandas/numpy:
     equity_t   = product(1 + net_r) * initial_cash
 
 There is no Python-level loop over bars in the hot path. The trade extraction
-loops over entries (typically <100 per backtest) for readability — vectorising
+loops over entries (typically <100 per backtest) for readability - vectorising
 the ledger build is not worth the obscurity at this scale.
 """
 
@@ -142,7 +142,7 @@ def run_buy_and_hold(
     cost_model: CostModel | None = None,
     initial_cash: float = 100_000.0,
 ) -> BacktestResult:
-    """Buy-and-hold baseline using the same engine — sanity check + benchmark."""
+    """Buy-and-hold baseline using the same engine - sanity check + benchmark."""
     if cost_model is None:
         cost_model = zero_cost_model()
 

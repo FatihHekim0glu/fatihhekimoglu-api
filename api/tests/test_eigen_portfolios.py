@@ -1,4 +1,4 @@
-"""Eigen Portfolios unit tests — all offline, all deterministic."""
+"""Eigen Portfolios unit tests - all offline, all deterministic."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def test_factor_returns_orthogonal() -> None:
 
 def test_eigen_decompose_drops_zero_variance_columns() -> None:
     panel = _synthetic_returns(n_market=5, n_sector_a=5, n_sector_b=5)
-    # Add a constant column — should be silently dropped.
+    # Add a constant column - should be silently dropped.
     panel = panel.copy()
     panel["CONST"] = 0.0
     result = eigen_decompose(panel)
@@ -150,7 +150,7 @@ def test_fit_sigma_no_signal_is_mean() -> None:
 
 
 class _StubProvider:
-    """Stand-in for PolygonProvider — returns synthetic OHLCV per ticker."""
+    """Stand-in for PolygonProvider - returns synthetic OHLCV per ticker."""
 
     def __init__(self, panel: pd.DataFrame) -> None:
         # ``panel`` is a wide DataFrame of returns indexed by date; we convert
@@ -182,7 +182,7 @@ def test_run_endpoint_with_synthetic_data(client, monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.setattr(router_mod, "make_provider", fake_make_provider)
     # Sidestep the PolygonProvider/Fallback isinstance branches by using a
-    # custom universe — exercises the same code path without grouped-daily.
+    # custom universe - exercises the same code path without grouped-daily.
     monkeypatch.setattr(router_mod, "PolygonProvider", _StubProvider)
     monkeypatch.setattr(router_mod, "PolygonProviderFallback", type("_NotMe", (), {}))
 

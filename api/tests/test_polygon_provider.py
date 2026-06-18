@@ -1,4 +1,4 @@
-"""Polygon provider unit tests — all offline, all <2s.
+"""Polygon provider unit tests - all offline, all <2s.
 
 Every HTTP call is intercepted through ``httpx.MockTransport`` so the suite
 never touches Polygon. Supabase is replaced with a fake stub that records
@@ -246,5 +246,5 @@ def test_make_provider_returns_polygon_with_key(monkeypatch: pytest.MonkeyPatch)
     provider.close()
 
 
-# Suppress "imported but unused" for json — kept for future debug-style tests.
+# Suppress "imported but unused" for json - kept for future debug-style tests.
 _ = json

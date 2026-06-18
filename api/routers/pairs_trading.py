@@ -178,7 +178,7 @@ def _resolve_sp500_pit_pairs(
 ) -> list[tuple[str, str]]:
     """Build the point-in-time S&P 500 ticker union and enumerate all pairs.
 
-    Only valid when the real Polygon provider is configured —
+    Only valid when the real Polygon provider is configured -
     ``SP500UniverseBuilder.get_grouped_daily`` has no yfinance equivalent.
     Returns the within-universe ``combinations(members, 2)`` tuple list.
     Raises ``ValueError`` when the fallback provider is in play so the caller
@@ -331,7 +331,7 @@ def run(
                 end=req.train_end.isoformat(),
             )
             if raw_prices.empty:
-                # Provider returned nothing usable — degrade to yfinance so
+                # Provider returned nothing usable - degrade to yfinance so
                 # the demo doesn't blank out on a transient Polygon hiccup.
                 raw_prices = load_prices(
                     tickers,

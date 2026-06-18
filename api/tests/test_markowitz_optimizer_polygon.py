@@ -72,7 +72,7 @@ class _StubPolygonProvider(PolygonProvider):
 
 
 class _StubFallbackProvider(PolygonProviderFallback):
-    """Fallback variant — surfaces as data_source='yfinance'."""
+    """Fallback variant - surfaces as data_source='yfinance'."""
 
     def __init__(self) -> None:
         super().__init__(supabase_client=None)
