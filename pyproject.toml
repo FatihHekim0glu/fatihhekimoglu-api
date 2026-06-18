@@ -122,6 +122,7 @@ module = [
     "arch.*",
     "wsb_sentiment.*",
     "finbert_sentiment.*",
+    "edgar_nlp.*",
 ]
 ignore_missing_imports = true
 
