@@ -56,6 +56,11 @@ dependencies = [
     # lstm-forecast router imports NO TensorFlow — inference runs through
     # onnxruntime against the committed <5MB synthetic-trained ONNX artifact.
     "onnxruntime>=1.17",
+    # vendored from finbert-sentiment [serve] extra: the DistilBERT fine-tune is
+    # served as a committed ONNX graph via onnxruntime (already pinned above) plus
+    # the HF `tokenizers` library for the tokenizer.json. NO torch, NO transformers
+    # on this serve path; the lexicon baseline is the torch-free fallback.
+    "tokenizers>=0.20",
 ]
 
 [project.optional-dependencies]
@@ -112,9 +117,11 @@ module = [
     "lstmforecast.*",
     "nnvsbs.*",
     "onnxruntime.*",
+    "tokenizers.*",
     "volforecast.*",
     "arch.*",
     "wsb_sentiment.*",
+    "finbert_sentiment.*",
 ]
 ignore_missing_imports = true
 
