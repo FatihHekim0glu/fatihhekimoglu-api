@@ -1,0 +1,75 @@
+{
+  "beats_lexicon": true,
+  "class_prior_macro_f1": 0.253534,
+  "config_hash": "fa104a0472302b230d28a5439d5a339b",
+  "confusion": [
+    [
+      55,
+      1,
+      5
+    ],
+    [
+      0,
+      278,
+      0
+    ],
+    [
+      2,
+      3,
+      109
+    ]
+  ],
+  "data_source": "gtfintechlab/financial_phrasebank_sentences_allagree/5768",
+  "eval_accuracy": 0.975717,
+  "eval_macro_f1": 0.9604,
+  "eval_macro_f1_ci": [
+    0.93178,
+    0.982239
+  ],
+  "labels": [
+    "negative",
+    "neutral",
+    "positive"
+  ],
+  "lexicon_macro_f1": 0.652481,
+  "mcnemar_p_value": 0.0,
+  "n_deduped": 2259,
+  "n_dropped_duplicates": 5,
+  "n_test": 453,
+  "n_total": 2264,
+  "notes": "Sentiment is a TEXT LABEL, not a tradable signal - no alpha is claimed. Walk-forward/purge/DSR do not apply (no return series). Headline metric is macro-F1 (never accuracy alone; the neutral class is ~61%). Class-prior and lexicon baselines are the honest floor.",
+  "per_class_f1": [
+    0.932203,
+    0.992857,
+    0.95614
+  ],
+  "per_class_precision": [
+    0.964912,
+    0.985816,
+    0.95614
+  ],
+  "per_class_recall": [
+    0.901639,
+    1.0,
+    0.95614
+  ],
+  "phrasebank_config": "sentences_allagree",
+  "schema_version": 1,
+  "seed": 20260618,
+  "served_model": "distilbert-onnx",
+  "split_sizes": {
+    "test": 453,
+    "train": 1579,
+    "val": 227
+  },
+  "transformer_published_macro_f1": {
+    "measured_in_this_build": true,
+    "note": "DistilBERT fine-tune is offline-reproducible via `finbert-sentiment train`. Measured in this build.",
+    "source": "ProsusAI/finbert (Araci 2019); Malo et al. 2014 PhraseBank",
+    "value_range": [
+      0.85,
+      0.9
+    ]
+  },
+  "verdict": "model_beats_lexicon"
+}

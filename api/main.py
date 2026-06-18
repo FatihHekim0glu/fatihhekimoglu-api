@@ -25,6 +25,7 @@ from .routers import (
     crypto_arb_scanner,
     eigen_portfolios,
     factorlab,
+    finbert_sentiment,
     hrp_portfolio,
     lendingclub_default,
     lstm_forecast,
@@ -98,3 +99,4 @@ app.include_router(lstm_forecast.router)
 app.include_router(volforecast.router)
 app.include_router(wsb_sentiment.router)
 app.include_router(nn_vs_bs.router)
+app.include_router(finbert_sentiment.router)
