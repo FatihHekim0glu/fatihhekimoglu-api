@@ -33,8 +33,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
 from ..deps import get_supabase
-from ..lib.factorlab.data.aqr import load_aqr_factors
 from ..lib.factorlab.data.align import prepare_regression_data
+from ..lib.factorlab.data.aqr import load_aqr_factors
 from ..lib.factorlab.data.famafrench import load_ff_factors
 from ..lib.factorlab.models.factor_sets import factors_for
 from ..lib.factorlab.models.regression import FactorRegression
@@ -179,7 +179,7 @@ def _load_factors_for(model: str, frequency: str) -> pd.DataFrame:
             aqr = load_aqr_factors()
             if not aqr.empty and "MOM" in aqr.columns:
                 factors = factors.join(aqr[["MOM"]], how="inner")
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("AQR fallback failed (non-fatal)")
 
     missing = [c for c in needed if c not in factors.columns]
@@ -214,7 +214,7 @@ def run(
         factors = _load_factors_for(req.model, req.frequency)
     except HTTPException:
         raise
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("factor data load failed for %s/%s", req.model, req.frequency)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -236,7 +236,7 @@ def run(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("prepare_regression_data failed for %s", req.ticker)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -262,7 +262,7 @@ def run(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("FactorRegression fit failed for %s", req.ticker)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -284,7 +284,7 @@ def run(
                     stars=str(row["Sig"]),
                 )
             )
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("coef_table failed (non-fatal)")
 
     # ----- rolling betas (best-effort) ---------------------------------
@@ -308,18 +308,16 @@ def run(
                     try:
                         fig = rolling_beta_chart(rolling_df, factor=factor)
                         figure_json = json.loads(pio.to_json(fig, validate=False))
-                        rolling_charts.append(
-                            RollingBetaFigure(factor=factor, figure=figure_json)
-                        )
-                    except Exception:  # noqa: BLE001
+                        rolling_charts.append(RollingBetaFigure(factor=factor, figure=figure_json))
+                    except Exception:
                         logger.exception("rolling_beta_chart failed for %s (non-fatal)", factor)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.exception("rolling_factor_exposure failed (non-fatal)")
 
     # ----- interpretation markdown -------------------------------------
     try:
         interpretation = reg.interpret()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("interpret() failed (non-fatal)")
         interpretation = f"Interpretation unavailable: {exc}"
 
@@ -377,5 +375,5 @@ def _maybe_log_run(supabase, req: FactorlabRequest, resp: FactorlabResponse) -> 
                 "status": "ok",
             }
         ).execute()
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("tool_runs insert failed (non-fatal)")

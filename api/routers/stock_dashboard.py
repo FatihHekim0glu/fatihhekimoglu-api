@@ -74,7 +74,7 @@ class AnchorResponse(BaseModel):
 
     today_nyse: date = Field(..., description="NYSE-local today (ISO).")
     min_date: date = Field(date(1970, 1, 1))
-    default_start: date = Field(..., description="today_nyse − 5y, the source's default.")
+    default_start: date = Field(..., description="today_nyse minus 5y, the source's default.")
     market_is_open: bool = Field(..., description="True before today's NYSE close.")
     trading_day_stamp: str = Field(..., description="Cache-key stamp; flips at NYSE close.")
 
@@ -165,6 +165,7 @@ def anchor() -> AnchorResponse:
     today_ny = datetime.now(ny).date()
     return AnchorResponse(
         today_nyse=today_ny,
+        min_date=date(1970, 1, 1),
         default_start=today_ny - timedelta(days=5 * 365),
         market_is_open=data._market_is_open_now(),
         trading_day_stamp=data.trading_day_stamp(),

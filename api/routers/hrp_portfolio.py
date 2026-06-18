@@ -41,20 +41,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, field_validator
-
-from ..deps import get_supabase
-from ..lib.polygon.provider import (
-    PolygonProvider,
-    PolygonProviderFallback,
-    make_provider,
-)
-
-# Importing the vendor package side-effects ``sys.path`` so that ``import hrp``
-# resolves to the vendored copy. Keep this import even if unused for
-# type-checking purposes.
-from ..lib import hrp as _vendor_marker  # noqa: F401
-
 from hrp import (
     block_bootstrap_sharpe_gap,
     deflated_sharpe_ratio,
@@ -73,6 +59,19 @@ from hrp import (
 from hrp.backtest.stats import annualized_vol, sharpe_ratio
 from hrp.estimators.covariance import oas_cov, sample_cov
 from hrp.estimators.rmt import marchenko_pastur_clip
+from pydantic import BaseModel, Field, field_validator
+
+from ..deps import get_supabase
+
+# Importing the vendor package side-effects ``sys.path`` so that ``import hrp``
+# resolves to the vendored copy. Keep this import even if unused for
+# type-checking purposes.
+from ..lib import hrp as _vendor_marker  # noqa: F401
+from ..lib.polygon.provider import (
+    PolygonProvider,
+    PolygonProviderFallback,
+    make_provider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -185,12 +184,16 @@ class HRPResponse(BaseModel):
             "naive_1n_turnover, n_assets, n_rebalances, headline_verdict."
         ),
     )
-    dendrogram_figure: dict[str, Any] = Field(..., description="Plotly figure JSON: {data, layout}.")
+    dendrogram_figure: dict[str, Any] = Field(
+        ..., description="Plotly figure JSON: {data, layout}."
+    )
     quasidiag_heatmap_figure: dict[str, Any] = Field(
         ..., description="Plotly figure JSON: {data, layout}."
     )
     weights_figure: dict[str, Any] = Field(..., description="Plotly figure JSON: {data, layout}.")
-    oos_equity_figure: dict[str, Any] = Field(..., description="Plotly figure JSON: {data, layout}.")
+    oos_equity_figure: dict[str, Any] = Field(
+        ..., description="Plotly figure JSON: {data, layout}."
+    )
     sharpe_gap_bootstrap_figure: dict[str, Any] = Field(
         ..., description="Plotly figure JSON: {data, layout}."
     )
@@ -223,9 +226,7 @@ def _parse_ticker_list(tickers: str) -> tuple[str, ...]:
 # ---------------------------------------------------------------------------
 
 
-def _synthetic_returns(
-    tickers: tuple[str, ...], start: str, end: str, seed: int
-) -> pd.DataFrame:
+def _synthetic_returns(tickers: tuple[str, ...], start: str, end: str, seed: int) -> pd.DataFrame:
     """Deterministic synthetic returns; identical math to the markowitz tool."""
     rng = np.random.default_rng(seed)
     n_assets = len(tickers)
@@ -283,7 +284,7 @@ def _load_returns_via_provider(
     for ticker in tickers:
         try:
             df = provider.get_eod(ticker, start, end)
-        except Exception as exc:  # noqa: BLE001 — degrade per-ticker
+        except Exception as exc:
             logger.warning(
                 "provider.get_eod(%s) failed (%s); skipping",
                 ticker,
@@ -347,11 +348,13 @@ def _build_allocators(req: HRPRequest):
         return _estimate_cov(window, req.covariance, rmt_denoise=req.rmt_denoise)
 
     allocators: dict[str, Any] = {
-        "HRP": lambda window: hrp_allocate(
-            window,
-            cov=_window_cov(window),
-            linkage_method=req.linkage,
-        ).weights,
+        "HRP": lambda window: (
+            hrp_allocate(
+                window,
+                cov=_window_cov(window),
+                linkage_method=req.linkage,
+            ).weights
+        ),
         "1/N": lambda window: naive_weights(list(window.columns)),
         "IVP": lambda window: ivp_weights(_window_cov(window)),
     }
@@ -364,7 +367,7 @@ def _build_allocators(req: HRPRequest):
             from hrp import min_var_weights
 
             allocators["min_var"] = lambda window: min_var_weights(_window_cov(window))
-        except Exception:  # noqa: BLE001 — keep 1/N + IVP at minimum
+        except Exception:
             logger.warning("min_var_weights unavailable; skipping min_var baseline")
 
     return allocators
@@ -468,7 +471,7 @@ def _run_pipeline(returns: pd.DataFrame, req: HRPRequest) -> dict[str, Any]:
     try:
         deflated = deflated_sharpe_ratio(
             hrp_per_obs_sharpe,
-            n_obs=int(len(hrp_oos)),
+            n_obs=len(hrp_oos),
             n_trials=int(n_effective_trials),
             variance_of_trial_sharpes=1.0,
             skew=skew,
@@ -530,7 +533,8 @@ def _full_window_hrp(returns: pd.DataFrame, req: HRPRequest):
 def _empty_figure(title: str) -> dict[str, Any]:
     fig = go.Figure()
     fig.update_layout(title=title, height=360)
-    return json.loads(pio.to_json(fig, validate=False))
+    payload: dict[str, Any] = json.loads(pio.to_json(fig, validate=False))
+    return payload
 
 
 def _oos_equity_figure(results: dict[str, Any]) -> dict[str, Any]:
@@ -540,10 +544,7 @@ def _oos_equity_figure(results: dict[str, Any]) -> dict[str, Any]:
         equity = _equity_curve(res.oos_returns)
         fig.add_trace(
             go.Scatter(
-                x=[
-                    v.isoformat() if hasattr(v, "isoformat") else str(v)
-                    for v in equity.index
-                ],
+                x=[v.isoformat() if hasattr(v, "isoformat") else str(v) for v in equity.index],
                 y=[_safe_float(v) for v in equity.to_numpy()],
                 mode="lines",
                 name=name,
@@ -557,7 +558,8 @@ def _oos_equity_figure(results: dict[str, Any]) -> dict[str, Any]:
         legend={"orientation": "h"},
         height=440,
     )
-    return json.loads(pio.to_json(fig, validate=False))
+    payload: dict[str, Any] = json.loads(pio.to_json(fig, validate=False))
+    return payload
 
 
 def _correlation_from_cov(cov: pd.DataFrame) -> pd.DataFrame:
@@ -641,7 +643,7 @@ def run(
         )
         heatmap_json = quasidiag_heatmap_figure(corr_full, list(hrp_full.quasidiag_order))
         weights_json = weights_figure(hrp_full.weights, title="HRP portfolio weights")
-    except Exception:  # noqa: BLE001 — figures are best-effort, never fatal
+    except Exception:
         logger.exception("hrp-portfolio tree/weights figures failed (non-fatal)")
         dendro_json = _empty_figure("HRP dendrogram")
         heatmap_json = _empty_figure("Quasi-diagonalized correlation")
@@ -649,7 +651,7 @@ def run(
 
     try:
         equity_json = _oos_equity_figure(results)
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("hrp-portfolio equity figure failed (non-fatal)")
         equity_json = _empty_figure("Out-of-sample equity curves")
 
@@ -668,7 +670,7 @@ def run(
             ci_low=comparison.ci_low,
             ci_high=comparison.ci_high,
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("hrp-portfolio bootstrap figure failed (non-fatal)")
         bootstrap_json = _empty_figure("Bootstrap Sharpe-gap distribution")
 
@@ -723,7 +725,7 @@ def _bootstrap_gap_samples(
             return 0.0
         return float(x.mean()) / std
 
-    eff_block = max(1, int(round(t ** (1.0 / 3.0))))
+    eff_block = max(1, round(t ** (1.0 / 3.0)))
     p_restart = 1.0 / eff_block
     rng = make_rng(seed)
     gaps = np.empty(int(n_bootstrap), dtype="float64")

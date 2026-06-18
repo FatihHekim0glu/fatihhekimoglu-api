@@ -65,12 +65,12 @@ router = APIRouter(prefix="/tools/eigen-portfolios", tags=["eigen-portfolios"])
 Universe = Literal["sp500-pit", "custom"]
 Rebalance = Literal["none"]
 
-_MIN_COVERAGE = 0.60          # drop tickers with < 60% non-NaN closes
-_MIN_OBS_PER_N = 2            # require T >= 2*N for the PCA to be well-posed
-_TOP_WEIGHTS = 10             # per top-K eigvector, show this many heaviest names
+_MIN_COVERAGE = 0.60  # drop tickers with < 60% non-NaN closes
+_MIN_OBS_PER_N = 2  # require T >= 2*N for the PCA to be well-posed
+_TOP_WEIGHTS = 10  # per top-K eigvector, show this many heaviest names
 _MAX_CUSTOM_TICKERS = 600
 _MIN_CUSTOM_TICKERS = 2
-_MAX_HEATMAP_N = 60           # heatmap is unreadable past ~60 rows
+_MAX_HEATMAP_N = 60  # heatmap is unreadable past ~60 rows
 
 
 # ---------------------------------------------------------------------------
@@ -100,9 +100,7 @@ class EigenPortfoliosRequest(BaseModel):
             seen.add(t)
             cleaned.append(t)
         if len(cleaned) > _MAX_CUSTOM_TICKERS:
-            raise ValueError(
-                f"custom universe is capped at {_MAX_CUSTOM_TICKERS} tickers"
-            )
+            raise ValueError(f"custom universe is capped at {_MAX_CUSTOM_TICKERS} tickers")
         return cleaned
 
     @field_validator("end_date")
@@ -163,7 +161,7 @@ def _lookup_sector(ticker: str) -> str | None:
             return None
         meta = provider.get_ticker_meta(ticker)
         provider.close()
-    except (PolygonError, Exception):  # noqa: BLE001 — best-effort only
+    except (PolygonError, Exception):
         return None
     # Polygon stores sector under `sic_description` or `sector`; prefer the
     # higher-level GICS-style label when available.
@@ -213,7 +211,7 @@ def _interpret_eigvec(
     modal_sector, modal_count = counter.most_common(1)[0]
     share = modal_count / max(len(selected), 1)
     if share >= 0.40:
-        return f"sector: {modal_sector.lower()} (≈{int(round(share * 100))}%)"
+        return f"sector: {modal_sector.lower()} (≈{round(share * 100)}%)"
     return "diversified / mixed exposure"
 
 
@@ -231,9 +229,7 @@ def _resolve_universe(
         if not req.tickers or len(req.tickers) < _MIN_CUSTOM_TICKERS:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=(
-                    f"custom universe requires at least {_MIN_CUSTOM_TICKERS} tickers"
-                ),
+                detail=(f"custom universe requires at least {_MIN_CUSTOM_TICKERS} tickers"),
             )
         return list(req.tickers)
 
@@ -273,7 +269,7 @@ def _build_returns_panel(
     for ticker in tickers:
         try:
             df = provider.get_eod(ticker, start, end)
-        except (PolygonError, Exception) as exc:  # noqa: BLE001
+        except (PolygonError, Exception) as exc:
             logger.info("get_eod failed for %s (%s); dropping", ticker, exc)
             dropped.append(ticker)
             continue
@@ -347,7 +343,7 @@ def _spectrum_figure(
             mode="lines",
             line={"color": _CRIMSON, "width": 2.5},
             name="Marchenko-Pastur",
-            hovertemplate="λ=%{x:.3f}<br>ρ_MP=%{y:.3f}<extra></extra>",
+            hovertemplate="lambda=%{x:.3f}<br>rho_MP=%{y:.3f}<extra></extra>",
         )
     )
 
@@ -379,7 +375,18 @@ def _factor_returns_figure(
     """Cumulative z-score factor returns for the top-K eigen-portfolios."""
     fig = go.Figure()
     k = min(top_k, factor_returns.shape[1])
-    palette = [_NAVY, _AMBER, _CRIMSON, _TEAL, "#7c3aed", "#2563eb", "#16a34a", "#dc2626", "#9333ea", "#0891b2"]
+    palette = [
+        _NAVY,
+        _AMBER,
+        _CRIMSON,
+        _TEAL,
+        "#7c3aed",
+        "#2563eb",
+        "#16a34a",
+        "#dc2626",
+        "#9333ea",
+        "#0891b2",
+    ]
     for i in range(k):
         col = factor_returns.columns[i]
         cum = factor_returns[col].cumsum()
@@ -390,9 +397,7 @@ def _factor_returns_figure(
                 mode="lines",
                 name=str(col),
                 line={"color": palette[i % len(palette)], "width": 1.5},
-                hovertemplate=(
-                    f"{col}<br>%{{x|%Y-%m-%d}}<br>cum_z=%{{y:.2f}}<extra></extra>"
-                ),
+                hovertemplate=(f"{col}<br>%{{x|%Y-%m-%d}}<br>cum_z=%{{y:.2f}}<extra></extra>"),
             )
         )
     fig.update_layout(
@@ -426,9 +431,7 @@ def _weights_heatmap_figure(
             if len(kept) >= _MAX_HEATMAP_N:
                 break
         panel = panel.loc[list(kept)]
-        panel = panel.reindex(
-            panel.abs().sum(axis=1).sort_values(ascending=False).index
-        )
+        panel = panel.reindex(panel.abs().sum(axis=1).sort_values(ascending=False).index)
 
     fig = go.Figure(
         go.Heatmap(
@@ -438,9 +441,7 @@ def _weights_heatmap_figure(
             colorscale="RdBu",
             zmid=0.0,
             colorbar={"title": "Weight"},
-            hovertemplate=(
-                "%{y} | %{x}<br>weight=%{z:.3f}<extra></extra>"
-            ),
+            hovertemplate=("%{y} | %{x}<br>weight=%{z:.3f}<extra></extra>"),
         )
     )
     fig.update_layout(
@@ -469,7 +470,8 @@ def _safe_float(value: Any) -> float:
 
 
 def _to_plotly_json(fig: go.Figure) -> dict[str, Any]:
-    return json.loads(pio.to_json(fig, validate=False))
+    payload: dict[str, Any] = json.loads(pio.to_json(fig, validate=False))
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -498,7 +500,7 @@ def run(
 
     try:
         tickers = _resolve_universe(req, provider, supabase)
-        returns, kept, dropped = _build_returns_panel(
+        returns, _kept, dropped = _build_returns_panel(
             tickers, req.start_date, req.end_date, provider
         )
     except HTTPException:
@@ -551,8 +553,7 @@ def run(
         weights = result.eigvecs[col]
         top_idx = weights.abs().sort_values(ascending=False).index[:_TOP_WEIGHTS]
         top_weights = [
-            TopWeight(ticker=str(t), weight=_safe_float(weights.loc[t]))
-            for t in top_idx
+            TopWeight(ticker=str(t), weight=_safe_float(weights.loc[t])) for t in top_idx
         ]
         top_portfolios.append(
             TopPortfolio(
@@ -618,5 +619,5 @@ def _maybe_log_run(
                 "status": "ok",
             }
         ).execute()
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.exception("tool_runs insert failed (non-fatal)")

@@ -33,6 +33,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
 from ..deps import get_supabase
+
+# Importing the vendor package mutates sys.path so the absolute `pairs.*`
+# imports below resolve to api/lib/pairs_trading/_vendor/pairs/.
+from ..lib import pairs_trading as _pairs_trading_vendor  # noqa: F401
 from ..lib.pairs_trading._polygon_adapter import load_prices_via_provider
 from ..lib.polygon.provider import (
     PolygonProvider,
@@ -40,10 +44,6 @@ from ..lib.polygon.provider import (
     make_provider,
 )
 from ..lib.polygon.sp500_universe import SP500UniverseBuilder
-
-# Importing the vendor package mutates sys.path so the absolute `pairs.*`
-# imports below resolve to api/lib/pairs_trading/_vendor/pairs/.
-from ..lib import pairs_trading as _pairs_trading_vendor  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +158,7 @@ def _resolve_pair_tuples(universe: str) -> list[tuple[str, str]]:
     yields all within-universe pairs. `sp500-pit` is built dynamically in the
     router via :class:`SP500UniverseBuilder` and is NOT resolved here.
     """
-    from pairs.data import load_pair_universe, load_universe  # type: ignore[import-not-found]
+    from pairs.data import load_pair_universe, load_universe
 
     try:
         pu = load_pair_universe(universe)
@@ -171,7 +171,7 @@ def _resolve_pair_tuples(universe: str) -> list[tuple[str, str]]:
 
 
 def _resolve_sp500_pit_pairs(
-    provider: "PolygonProvider | PolygonProviderFallback",
+    provider: PolygonProvider | PolygonProviderFallback,
     supabase: Any,
     start: date,
     end: date,
@@ -198,8 +198,7 @@ def _resolve_sp500_pit_pairs(
         members.update(members_list)
     if len(members) < 2:
         raise ValueError(
-            "SP500UniverseBuilder returned fewer than 2 members for the "
-            "requested window."
+            "SP500UniverseBuilder returned fewer than 2 members for the requested window."
         )
     tickers = sorted(members)
     return list(combinations(tickers, 2))
@@ -259,7 +258,8 @@ def _build_histogram(p_values: list[float], cutoff: float) -> dict[str, Any]:
         showlegend=False,
         height=420,
     )
-    return json.loads(pio.to_json(fig, validate=False))
+    payload: dict[str, Any] = json.loads(pio.to_json(fig, validate=False))
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -269,7 +269,7 @@ def _build_histogram(p_values: list[float], cutoff: float) -> dict[str, Any]:
 
 def get_provider(
     supabase=Depends(get_supabase),
-) -> "PolygonProvider | PolygonProviderFallback":
+) -> PolygonProvider | PolygonProviderFallback:
     """FastAPI dependency factory for the shared Polygon provider.
 
     Wrapped here (rather than wired directly via ``make_provider``) so tests
@@ -282,12 +282,12 @@ def get_provider(
 def run(
     req: PairsTradingRequest,
     supabase=Depends(get_supabase),
-    provider: "PolygonProvider | PolygonProviderFallback" = Depends(get_provider),
+    provider: PolygonProvider | PolygonProviderFallback = Depends(get_provider),
 ) -> PairsTradingResponse:
     """Run the cointegration scan over the chosen universe & window."""
-    from pairs._exceptions import InputError, PairsError  # type: ignore[import-not-found]
-    from pairs.data import load_prices  # type: ignore[import-not-found]
-    from pairs.selection import Candidate, screen_cointegration  # type: ignore[import-not-found]
+    from pairs._exceptions import InputError, PairsError
+    from pairs.data import load_prices
+    from pairs.selection import Candidate, screen_cointegration
 
     mtc_tag = _MTC_METHOD_MAP[req.fdr_method]
 
@@ -396,7 +396,7 @@ def run(
         diagnostics["in_hl_band"] = pd.Series(dtype=bool)
 
     # 5. KPI aggregates.
-    pairs_tested = int(len(diagnostics))
+    pairs_tested = len(diagnostics)
     if pairs_tested:
         survivors = int((diagnostics["q_value"].astype(float) < 0.05).sum())
         median_hl = _safe_float(diagnostics["half_life"].median(skipna=True))
@@ -454,9 +454,7 @@ def run(
 # ---------------------------------------------------------------------------
 
 
-def _maybe_log_run(
-    supabase, req: PairsTradingRequest, resp: PairsTradingResponse
-) -> None:
+def _maybe_log_run(supabase, req: PairsTradingRequest, resp: PairsTradingResponse) -> None:
     if supabase is None:
         return
     try:
@@ -479,4 +477,4 @@ def _maybe_log_run(
 
 # Silence the unused-import warning while keeping the side-effecting sys.path
 # mutation that powers the vendored `pairs.*` imports.
-_ = np  # noqa: PLW0612
+_ = np

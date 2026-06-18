@@ -54,6 +54,7 @@ def get_provider(
     """
     return make_provider(supabase_client=supabase)
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tools/ma-crossover-backtest", tags=["ma-crossover-backtest"])
@@ -214,7 +215,7 @@ def _build_equity_figure(
             y=strat_equity.values,
             mode="lines",
             name="Strategy",
-            line=dict(color="#14b8a6", width=2),
+            line={"color": "#14b8a6", "width": 2},
         )
     )
     fig.add_trace(
@@ -223,16 +224,16 @@ def _build_equity_figure(
             y=bh_equity.values,
             mode="lines",
             name="Buy & Hold",
-            line=dict(color="#94a3b8", width=2, dash="dash"),
+            line={"color": "#94a3b8", "width": 2, "dash": "dash"},
         )
     )
     fig.update_layout(
         title=f"{ticker} - Equity Curve (log scale)",
-        yaxis=dict(type="log", title="Equity"),
-        xaxis=dict(title="Date"),
+        yaxis={"type": "log", "title": "Equity"},
+        xaxis={"title": "Date"},
         hovermode="x unified",
         template="plotly_white",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
     )
     return fig
 
@@ -253,7 +254,7 @@ def _build_drawdown_figure(
             y=strat_dd.values,
             mode="lines",
             name="Strategy",
-            line=dict(color="#14b8a6", width=2),
+            line={"color": "#14b8a6", "width": 2},
             fill="tozeroy",
             fillcolor="rgba(20, 184, 166, 0.15)",
         )
@@ -264,16 +265,16 @@ def _build_drawdown_figure(
             y=bh_dd.values,
             mode="lines",
             name="Buy & Hold",
-            line=dict(color="#94a3b8", width=2, dash="dash"),
+            line={"color": "#94a3b8", "width": 2, "dash": "dash"},
         )
     )
     fig.update_layout(
         title=f"{ticker} - Underwater Drawdown",
-        yaxis=dict(title="Drawdown", tickformat=".0%"),
-        xaxis=dict(title="Date"),
+        yaxis={"title": "Drawdown", "tickformat": ".0%"},
+        xaxis={"title": "Date"},
         hovermode="x unified",
         template="plotly_white",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02, "xanchor": "right", "x": 1},
     )
     return fig
 
@@ -371,7 +372,12 @@ def run(
     bh_m = _metrics(bh_result.equity, bh_result.daily_returns)
 
     metrics_rows: list[MetricsRow] = [
-        MetricsRow(name=name, strategy=strat_m[name], buy_and_hold=bh_m[name], delta=_delta(strat_m[name], bh_m[name]))
+        MetricsRow(
+            name=name,
+            strategy=strat_m[name],
+            buy_and_hold=bh_m[name],
+            delta=_delta(strat_m[name], bh_m[name]),
+        )
         for name in ("CAGR", "Annual vol", "Sharpe", "Sortino", "Max drawdown")
     ]
 
@@ -424,11 +430,11 @@ def run(
             ticker=req.ticker,
             start=close.index[0].date() if hasattr(close.index[0], "date") else req.start_date,
             end=close.index[-1].date() if hasattr(close.index[-1], "date") else req.end_date,
-            trading_days=int(len(close)),
+            trading_days=len(close),
             fast_window=req.fast_window,
             slow_window=req.slow_window,
             cost_bps=req.cost_bps,
-            n_trades=int(len(strat_result.trades)),
+            n_trades=len(strat_result.trades),
         ),
         metrics=metrics_rows,
         benchmark=stats,
@@ -446,9 +452,7 @@ def run(
 # ---------------------------------------------------------------------------
 
 
-def _maybe_log_run(
-    supabase, req: MaCrossoverRequest, resp: MaCrossoverResponse
-) -> None:
+def _maybe_log_run(supabase, req: MaCrossoverRequest, resp: MaCrossoverResponse) -> None:
     if supabase is None:
         return
     try:

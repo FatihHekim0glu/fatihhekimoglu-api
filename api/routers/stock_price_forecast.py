@@ -119,9 +119,7 @@ def _safe_float(value: float | None) -> float | None:
     return f
 
 
-def _build_history_figure(
-    ticker: str, dates: list[str], close: list[float]
-) -> dict[str, Any]:
+def _build_history_figure(ticker: str, dates: list[str], close: list[float]) -> dict[str, Any]:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -133,13 +131,14 @@ def _build_history_figure(
         )
     )
     fig.update_layout(
-        title=f"{ticker} — Historical Close (since 2010)",
+        title=f"{ticker} - Historical Close (since 2010)",
         xaxis_title="Date",
         yaxis_title="Close (USD)",
         template="plotly_white",
         showlegend=False,
     )
-    return json.loads(pio.to_json(fig, validate=False))
+    payload: dict[str, Any] = json.loads(pio.to_json(fig, validate=False))
+    return payload
 
 
 def _build_forecast_figure(
@@ -187,13 +186,14 @@ def _build_forecast_figure(
         )
     )
     fig.update_layout(
-        title=f"{ticker} — Next {len(fcst_dates)}-day forecast",
+        title=f"{ticker} - Next {len(fcst_dates)}-day forecast",
         xaxis_title="Date",
         yaxis_title="Close (USD)",
         template="plotly_white",
         legend={"orientation": "h", "y": -0.18},
     )
-    return json.loads(pio.to_json(fig, validate=False))
+    payload: dict[str, Any] = json.loads(pio.to_json(fig, validate=False))
+    return payload
 
 
 # ---------------------------------------------------------------------------
