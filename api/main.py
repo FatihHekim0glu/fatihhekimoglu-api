@@ -23,6 +23,7 @@ from .config import settings
 from .routers import (
     anomaly_detector,
     crypto_arb_scanner,
+    edgar_nlp,
     eigen_portfolios,
     factorlab,
     finbert_sentiment,
@@ -100,3 +101,4 @@ app.include_router(volforecast.router)
 app.include_router(wsb_sentiment.router)
 app.include_router(nn_vs_bs.router)
 app.include_router(finbert_sentiment.router)
+app.include_router(edgar_nlp.router)
