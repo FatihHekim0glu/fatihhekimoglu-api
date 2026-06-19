@@ -26,6 +26,7 @@ from .routers import (
     edgar_nlp,
     eigen_portfolios,
     factorlab,
+    fed_causal,
     finbert_sentiment,
     gnn_stocks,
     hrp_portfolio,
@@ -106,3 +107,4 @@ app.include_router(nn_vs_bs.router)
 app.include_router(finbert_sentiment.router)
 app.include_router(edgar_nlp.router)
 app.include_router(gnn_stocks.router)
+app.include_router(fed_causal.router)
