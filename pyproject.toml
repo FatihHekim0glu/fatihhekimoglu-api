@@ -127,6 +127,7 @@ module = [
     "gnnstocks.*",
     "fedcausal.*",
     "rltrader.*",
+    "algosystem.*",
 ]
 ignore_missing_imports = true
 
