@@ -550,7 +550,14 @@ def _dsr_safe(dsr_fn: Any, ls_series: FloatArray, *, n_trials: int) -> float:
     if not np.isfinite(std) or std <= 0.0:
         return 0.0
     observed_sharpe = float(arr.mean()) / std
-    variance_of_trials = max(1e-8, float(np.var(arr)) / max(1.0, float(arr.size)))
+    # V = cross-trial variance of the per-observation Sharpe estimates. Under the
+    # DSR null (every trial's TRUE Sharpe is 0) each trial Sharpe estimate has
+    # sampling variance Var(SR_hat) ≈ (1 + SR²/2) / n_obs (Lo 2002; Bailey-LdP).
+    # That closed form is the honest cross-trial dispersion and — unlike the prior
+    # within-series var(returns)/n (~1e-6, which collapsed SR*_0 to ~0 and made the
+    # multiplicity deflation a no-op) — it makes the DSR strictly decrease as
+    # n_trials grows, so the deflation actually protects against selection bias.
+    variance_of_trials = (1.0 + 0.5 * observed_sharpe**2) / float(arr.size)
     try:
         return float(
             dsr_fn(

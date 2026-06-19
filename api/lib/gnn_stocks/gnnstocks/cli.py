@@ -826,8 +826,14 @@ def _sharpe(series: FloatArray) -> float:
 
 
 def _n_effective_trials() -> int:
-    """Honest multiplicity count for the DSR: #graph-types x #GNN models."""
-    return len(_GRAPH_TYPES) * len(_GNN_MODELS)
+    """Honest multiplicity count for the DSR: #graph-types x #models (full roster).
+
+    Must match :func:`gnnstocks.train.n_effective_trials` and
+    ``serve._N_EFFECTIVE_TRIALS`` so the DSR values shown on the live path are
+    computed with the SAME multiplicity that is reported (every model tried —
+    baselines AND GNNs — is a selection trial, not just the GNNs).
+    """
+    return len(_GRAPH_TYPES) * len(_ALL_MODELS)
 
 
 def _dm_safe(dm_fn: object, skill_model: FloatArray, skill_baseline: FloatArray) -> tuple[float, float]:
@@ -852,7 +858,13 @@ def _dsr_safe(dsr_fn: object, ls_series: FloatArray, *, n_trials: int) -> float:
     if not np.isfinite(std) or std <= 0.0:
         return 0.0
     observed_sharpe = float(arr.mean()) / std
-    variance_of_trials = max(1e-8, float(np.var(arr)) / max(1.0, float(arr.size)))
+    # V = cross-trial variance of the per-observation Sharpe estimates. Under the
+    # DSR null (every trial's TRUE Sharpe is 0) each trial Sharpe estimate has
+    # sampling variance Var(SR_hat) ≈ (1 + SR²/2) / n_obs (Lo 2002; Bailey-LdP).
+    # This closed form is the honest cross-trial dispersion and makes the DSR
+    # strictly decrease as n_trials grows — the prior within-series var(returns)/n
+    # (~1e-6) collapsed SR*_0 to ~0 and neutralized the multiplicity deflation.
+    variance_of_trials = (1.0 + 0.5 * observed_sharpe**2) / float(arr.size)
     try:
         return float(
             dsr_fn(  # type: ignore[operator]

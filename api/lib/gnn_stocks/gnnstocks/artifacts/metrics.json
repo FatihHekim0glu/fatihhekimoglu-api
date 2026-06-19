@@ -26,7 +26,7 @@
     "config_hash": "d23e582045a1956fcb5796ca6e9ad698",
     "dirty": true,
     "extra": {},
-    "git_sha": "d4bc721",
+    "git_sha": "b8559a1",
     "seed": 7
   },
   "n_effective_trials": 12,
@@ -34,10 +34,10 @@
     "best_baseline": "ridge",
     "best_model": "ridge",
     "deflated_sharpe": {
-      "gcn": 0.31930578596028125,
-      "graphsage": 0.26643545581490735,
-      "naive": 0.6250704234639077,
-      "ridge": 0.7278576848761886
+      "gcn": 0.01717355819941835,
+      "graphsage": 0.011570642018007504,
+      "naive": 0.09194406656989207,
+      "ridge": 0.14894154048236685
     },
     "dm_pvalue_vs_baseline": {
       "gcn": 0.2554797359313832,
