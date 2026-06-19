@@ -11,16 +11,16 @@
   "deployed_default": {
     "backtest_live_parity_max_diff": 0.0,
     "bar_finality_ok": true,
-    "buyhold_sharpe": -0.09725413103539217,
+    "buyhold_sharpe": -0.046680204144943546,
     "data_source": "synthetic",
-    "deflated_sharpe": 0.003231782906843117,
-    "dm_pvalue_vs_buyhold": 0.19286761357516677,
-    "max_drawdown": -0.6910276308510048,
+    "deflated_sharpe": 0.005605394502951666,
+    "dm_pvalue_vs_buyhold": 0.17979481105508802,
+    "max_drawdown": -0.640949467857818,
     "n_effective_trials": 7,
-    "oos_sharpe": -0.7069991164473203,
+    "oos_sharpe": -0.7039997000870637,
     "pbo": 0.8626262626262626,
     "system_has_edge": false,
-    "turnover": 131.0
+    "turnover": 123.0
   },
   "learnable_trend": {
     "beats_buyhold": false,

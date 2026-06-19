@@ -31,7 +31,7 @@ import numpy as np
 from algosystem._exceptions import ValidationError
 from algosystem._typing import FloatArray
 from algosystem.backtest.bar_finality import BarStatus, check_finality
-from algosystem.backtest.engine import vectorized_backtest
+from algosystem.backtest.engine import vectorized_backtest, walk_forward_signal_backtest
 from algosystem.data.loaders import load_single_asset_bars, synthetic_default_bars
 from algosystem.evaluation.diebold_mariano import diebold_mariano
 from algosystem.evaluation.dsr import deflated_sharpe_ratio
@@ -342,29 +342,52 @@ def run_system(
     )
     live_equity = np.asarray(live.equity_curve, dtype="float64").ravel()
 
-    # 4) BAR-FINALITY GUARD. The replay decided on CLOSED bars only (the paper
-    # broker calls ``guard_order`` per bar); the report confirms no order was ever
-    # attributed to a forming bar — the ``bar_finality_ok`` flag the API surfaces.
+    # 4) BAR-FINALITY GUARD (a REAL-DATA safeguard). The deployed synthetic /
+    # committed feed contains ONLY finalized bars, so every decision bar is CLOSED
+    # and ``bar_finality_ok`` is True by construction HERE. The guard's actual
+    # teeth — rejecting an order triggered by a FORMING (partial) bar — are proven
+    # by the ``guard_order`` / ``check_finality`` unit + property tests; on a live
+    # feed with a still-forming last bar that bar would be marked FORMING and
+    # surface ``bar_finality_ok=False`` rather than silently trading a partial bar.
     finality = check_finality([BarStatus.CLOSED] * live.n_bars)
 
     # 5) BUY-AND-HOLD BASELINE: a constant long position over the same path + the
     # same frictions (the bar the strategy must clear).
+    buyhold_pos = np.ones(n_ret, dtype="float64")
     buyhold = vectorized_backtest(
-        ret, np.ones(n_ret, dtype="float64"), cost_bps=cost_bps, slippage_bps=slippage_bps
+        ret, buyhold_pos, cost_bps=cost_bps, slippage_bps=slippage_bps
     )
 
-    # 6) METRICS (net of costs + slippage) for the strategy + the buy-hold baseline.
-    metrics = strategy_metrics(selected_net, selected_positions)
-    buyhold_metrics = strategy_metrics(buyhold.net_returns, buyhold.positions)
+    # 5b) PURGED WALK-FORWARD OOS. The HEADLINE metrics (Sharpe/drawdown/turnover),
+    # the Diebold-Mariano test and the DSR observed-Sharpe are computed on the
+    # CONCATENATED purged-walk-forward OUT-OF-SAMPLE folds (purge>=1 boundary
+    # observation + embargo=1 return horizon), NOT on the full in-sample path — so
+    # ``oos_sharpe`` is genuinely out-of-sample. The selected config and the
+    # buy-hold baseline are folded with IDENTICAL geometry, so their OOS net-return
+    # paths align bar-for-bar for the DM differential. (The parity oracle above runs
+    # on the full path because backtest<->live agreement is a fill-accounting
+    # property, independent of the train/test folding.)
+    wf_selected = walk_forward_signal_backtest(
+        ret, selected_pos_full, cost_bps=cost_bps, slippage_bps=slippage_bps
+    )
+    wf_buyhold = walk_forward_signal_backtest(
+        ret, buyhold_pos, cost_bps=cost_bps, slippage_bps=slippage_bps
+    )
 
-    # 7) DIEBOLD-MARIANO of the strategy vs. buy-and-hold per-bar net return.
-    dm_statistic, dm_pvalue = diebold_mariano(selected_net, buyhold.net_returns)
+    # 6) METRICS (net of costs + slippage) for the strategy + the buy-hold baseline,
+    # both on the purged-walk-forward OOS folds.
+    metrics = strategy_metrics(wf_selected.net_returns, wf_selected.positions)
+    buyhold_metrics = strategy_metrics(wf_buyhold.net_returns, wf_buyhold.positions)
+
+    # 7) DIEBOLD-MARIANO of the strategy vs. buy-and-hold per-bar OOS net return.
+    dm_statistic, dm_pvalue = diebold_mariano(wf_selected.net_returns, wf_buyhold.net_returns)
 
     # 8) DEFLATED SHARPE with the HONEST grid-wide n_trials + the selected config's
-    # per-obs Sharpe and sample moments; PBO/CSCV over the full grid's net-return
-    # matrix. The DSR is non-increasing in n_trials (the multiplicity deflation).
+    # OOS per-obs Sharpe and sample moments; PBO/CSCV over the full grid's net-return
+    # matrix (CSCV does its OWN in-sample/out-of-sample splitting, so it correctly
+    # consumes the full-sample grid). The DSR is non-increasing in n_trials.
     n_trials = len(grid)
-    sel_arr = np.asarray(selected_net, dtype="float64").ravel()
+    sel_arr = np.asarray(wf_selected.net_returns, dtype="float64").ravel()
     skew, kurtosis = _sample_moments(sel_arr)
     var_trials = float(np.var(np.asarray(trial_sharpes, dtype="float64"), ddof=1))
     dsr = deflated_sharpe_ratio(
