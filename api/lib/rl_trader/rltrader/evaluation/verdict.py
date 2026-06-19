@@ -160,8 +160,14 @@ def derive_verdict(
     # Gate 1+2: the Diebold-Mariano test must be significant AND signed in the RL
     # agent's favour (a strictly higher mean net return than buy-and-hold).
     dm_ok = dm_favours_model(dm_statistic, dm_pvalue, alpha=alpha)
-    # Gate 3: the Deflated Sharpe (honest seed x HP n_trials) must clear zero.
-    dsr_ok = deflated_sharpe > 0.0
+    # Gate 3: the Deflated Sharpe must clear a CONFIDENCE threshold, not merely be
+    # positive. The DSR is a probability in [0, 1] (the probability the true Sharpe
+    # exceeds the multiplicity-adjusted, seed x HP n_trials benchmark), so a
+    # `> 0.0` test would be trivially satisfied by ANY positive Sharpe and the gate
+    # would never bind. Require `> 1 - alpha` (e.g. 0.95) — the standard
+    # Bailey-Lopez de Prado significance call — so the multiplicity deflation has
+    # real teeth.
+    dsr_ok = deflated_sharpe > (1.0 - alpha)
     # Gate 4: the across-seed Sharpe LOWER bound must clear zero (the dispersion
     # does not straddle zero — the apparent skill is not a seed lottery).
     seed_ok = seed_sharpe_lo > 0.0
