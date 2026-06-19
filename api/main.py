@@ -21,6 +21,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import __version__
 from .config import settings
 from .routers import (
+    algo_system,
     anomaly_detector,
     crypto_arb_scanner,
     edgar_nlp,
@@ -110,3 +111,4 @@ app.include_router(edgar_nlp.router)
 app.include_router(gnn_stocks.router)
 app.include_router(fed_causal.router)
 app.include_router(rl_trader.router)
+app.include_router(algo_system.router)

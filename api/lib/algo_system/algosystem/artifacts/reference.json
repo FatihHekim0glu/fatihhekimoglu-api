@@ -1,0 +1,56 @@
+{
+  "config": {
+    "cost_bps": 5.0,
+    "fast": 10,
+    "n_obs": 2000,
+    "seed": 7,
+    "signal": "ma_crossover",
+    "slippage_bps": 2.0,
+    "slow": 50
+  },
+  "deployed_default": {
+    "backtest_live_parity_max_diff": 0.0,
+    "bar_finality_ok": true,
+    "buyhold_sharpe": -0.09725413103539217,
+    "data_source": "synthetic",
+    "deflated_sharpe": 0.003231782906843117,
+    "dm_pvalue_vs_buyhold": 0.19286761357516677,
+    "max_drawdown": -0.6910276308510048,
+    "n_effective_trials": 7,
+    "oos_sharpe": -0.7069991164473203,
+    "pbo": 0.8626262626262626,
+    "system_has_edge": false,
+    "turnover": 131.0
+  },
+  "learnable_trend": {
+    "beats_buyhold": false,
+    "buyhold_sharpe": 0.7192257431287918,
+    "dm_pvalue_vs_buyhold": 0.40534870885468577,
+    "dm_statistic_vs_buyhold": -0.8321067203823255,
+    "kind": "learnable_trend",
+    "max_drawdown": -0.42483844492450584,
+    "oos_sharpe": 0.32923273719737334,
+    "turnover": 103.0
+  },
+  "pure_noise": {
+    "beats_buyhold": true,
+    "buyhold_sharpe": -0.5689285929482036,
+    "dm_pvalue_vs_buyhold": 0.3458247440525522,
+    "dm_statistic_vs_buyhold": 0.9427188206534247,
+    "kind": "pure_noise",
+    "max_drawdown": -0.3547357856149219,
+    "oos_sharpe": -0.03669533558715222,
+    "turnover": 99.0
+  },
+  "regime_trend": {
+    "beats_buyhold": true,
+    "buyhold_sharpe": -0.24015391325652638,
+    "dm_pvalue_vs_buyhold": 9.533994361025275e-06,
+    "dm_statistic_vs_buyhold": 4.427481054440492,
+    "kind": "regime_trend",
+    "max_drawdown": -0.3126550651234312,
+    "oos_sharpe": 2.6125384609429285,
+    "turnover": 55.0
+  },
+  "schema_version": 1
+}
