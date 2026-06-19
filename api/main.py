@@ -38,6 +38,7 @@ from .routers import (
     nn_vs_bs,
     pairs_trading,
     regime_hmm,
+    rl_trader,
     stock_clusters,
     stock_dashboard,
     stock_price_forecast,
@@ -108,3 +109,4 @@ app.include_router(finbert_sentiment.router)
 app.include_router(edgar_nlp.router)
 app.include_router(gnn_stocks.router)
 app.include_router(fed_causal.router)
+app.include_router(rl_trader.router)
