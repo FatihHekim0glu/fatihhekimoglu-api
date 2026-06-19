@@ -27,6 +27,7 @@ from .routers import (
     eigen_portfolios,
     factorlab,
     finbert_sentiment,
+    gnn_stocks,
     hrp_portfolio,
     lendingclub_default,
     lstm_forecast,
@@ -104,3 +105,4 @@ app.include_router(wsb_sentiment.router)
 app.include_router(nn_vs_bs.router)
 app.include_router(finbert_sentiment.router)
 app.include_router(edgar_nlp.router)
+app.include_router(gnn_stocks.router)
