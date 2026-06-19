@@ -48,15 +48,20 @@ class HeterogeneitySpread:
     net_spread:
         ``gross_spread`` minus the per-rotation cost — the spread an actual
         long/short would capture net of costs.
+    net_pvalue:
+        Two-sided p-value of the per-announcement NET-of-cost spread against
+        zero — the significance the verdict's condition 4 must gate on (NOT the
+        gross clustered-DiD interaction p-value).
     is_tradable_spread:
-        ``True`` only if ``net_spread`` is positive AND statistically distinct
-        from zero (this is one of FOUR independent conditions the overall verdict
-        requires; it is FALSE by default for the honest-null deliverable).
+        ``True`` only if ``net_spread`` is positive AND ``net_pvalue < alpha``
+        (this is one of FOUR independent conditions the overall verdict requires;
+        it is FALSE by default for the honest-null deliverable).
     """
 
     gross_spread: float
     cost_bps: float
     net_spread: float
+    net_pvalue: float
     is_tradable_spread: bool
 
     def to_dict(self) -> dict[str, Any]:
@@ -149,6 +154,7 @@ def heterogeneity_spread(
         gross_spread=gross_spread,
         cost_bps=cost,
         net_spread=net_spread,
+        net_pvalue=p_value,
         is_tradable_spread=is_tradable_spread,
     )
 

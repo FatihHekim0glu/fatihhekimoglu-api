@@ -143,13 +143,20 @@ def bmp_statistic(
     abnormal_by_event: list[pd.DataFrame],
     sigmas_by_event: list[pd.Series],
 ) -> tuple[float, float]:
-    """Boehmer-Musumeci-Poulsen (1991) standardized cross-sectional test.
+    """Standardized cross-sectional CAR test (Patell-style, the BMP family).
 
-    Each name's event CAR is standardized by its estimation-window residual scale
-    (and a forecast-error adjustment) to a standardized abnormal return (SAR);
-    the BMP statistic is the cross-sectional mean SAR scaled by its own
-    cross-sectional standard error, which is robust to event-induced variance
-    inflation that biases the plain cross-sectional t.
+    Each (event, name) CAR is standardized by its estimation-window residual scale
+    to a standardized CAR (``SCAR_i = CAR_i / (sigma_i * sqrt(L))``); the statistic
+    is the pooled cross-sectional mean SCAR scaled by its own cross-sectional
+    standard error, which is robust to the event-induced variance inflation that
+    biases the plain cross-sectional t (the BMP correction's purpose).
+
+    NOTE (honest scope): this is the standardized-residual / Patell variant. It
+    does NOT apply the full Boehmer-Musumeci-Poulsen (1991) out-of-sample
+    prediction-error (forecast-error) inflation factor, and it pools (event, name)
+    cells rather than aggregating per-event standardized average abnormal returns
+    (SAAR). It is reported alongside the placebo and HAC tests, never as the sole
+    significance source.
 
     Parameters
     ----------

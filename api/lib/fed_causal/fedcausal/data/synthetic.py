@@ -38,12 +38,6 @@ if TYPE_CHECKING:
 #: Fixed reference start date for the synthetic panel (deterministic by default).
 _DEFAULT_START: date = date(2015, 1, 1)
 
-#: Sign-dependent move (per rate-sensitive name, spread over the event window)
-#: added on hawkish/dovish events to create cross-sectional DiD heterogeneity.
-#: Scaled by ``injected_car`` so a richer effect amplifies the treated/control gap.
-_SURPRISE_TILT_FRAC: float = 0.5
-
-
 @dataclass(frozen=True, slots=True)
 class SyntheticPanel:
     """A synthetic event panel bundled with its ground-truth metadata.
@@ -110,6 +104,7 @@ def _validate_params(
     event_half_width: int,
     rate_sensitive_frac: float,
     noise_scale: float,
+    surprise_tilt_frac: float,
 ) -> None:
     """Validate generator sizing parameters, raising :class:`ValidationError`."""
     if n_names < 2:
@@ -133,6 +128,10 @@ def _validate_params(
         )
     if noise_scale <= 0.0 or not np.isfinite(noise_scale):
         raise ValidationError(f"noise_scale must be a positive finite float, got {noise_scale}.")
+    if surprise_tilt_frac < 0.0 or not np.isfinite(surprise_tilt_frac):
+        raise ValidationError(
+            f"surprise_tilt_frac must be a non-negative finite float, got {surprise_tilt_frac}."
+        )
 
 
 def synthetic_event_panel(
@@ -145,6 +144,7 @@ def synthetic_event_panel(
     injected_car: float = 0.01,
     rate_sensitive_frac: float = 0.4,
     noise_scale: float = 0.01,
+    surprise_tilt_frac: float = 0.12,
     seed: int = 7,
     start: date | None = None,
 ) -> SyntheticPanel:
@@ -200,6 +200,7 @@ def synthetic_event_panel(
         event_half_width=event_half_width,
         rate_sensitive_frac=rate_sensitive_frac,
         noise_scale=noise_scale,
+        surprise_tilt_frac=surprise_tilt_frac,
     )
 
     rng = make_rng(seed)
@@ -244,7 +245,13 @@ def synthetic_event_panel(
     # spread over the window) to give the treated-vs-control DiD a signal.
     window_len = 2 * k + 1
     per_day_car = injected_car / window_len
-    tilt = _SURPRISE_TILT_FRAC * abs(injected_car)
+    # The per-event rate-sensitivity edge. Deliberately calibrated BELOW the
+    # round-trip transaction cost (DEFAULT_COST_BPS) at the deployed default so the
+    # oracle long/short that harvests it is real heterogeneity yet NOT tradable net
+    # of costs — the honest null holds structurally (not by a knife-edge p-value).
+    # The rate_sensitive_panel preset overrides this upward for the DiD-detection
+    # unit tests, which check the GROSS heterogeneity, not the net-of-cost verdict.
+    tilt = surprise_tilt_frac * abs(injected_car)
     per_day_tilt = tilt / window_len
 
     surprises: list[SurpriseLabel] = []
@@ -256,10 +263,21 @@ def synthetic_event_panel(
         surprises.append(_classify_sign(rate_change))
         lo = pos - k
         hi = pos + k  # inclusive
-        # Known CAR into rate-sensitive names (the recovery target).
-        returns[lo : hi + 1, rate_sensitive_mask] += per_day_car
-        # Sign-dependent tilt into rate-sensitive names only (DiD heterogeneity:
-        # treated names move with the surprise sign; controls do not).
+        # Known CAR into ALL names (a market-wide event-window drift — the CAR
+        # recovery target). It is deliberately NOT treated-only: a constant
+        # treated-minus-control gap would be a genuinely tradable long/short and
+        # would make the honest null flip to True for enough events. Injecting it
+        # market-wide keeps the average CAR recoverable while leaving the
+        # treated-minus-control DiD spread to the sign-dependent tilt below.
+        returns[lo : hi + 1, :] += per_day_car
+        # Sign-dependent tilt into rate-sensitive names ONLY (the DiD
+        # heterogeneity: treated names move WITH the surprise sign, controls do
+        # not). Because the tilt is +tilt on hawkish and -tilt on dovish, the
+        # signed treated-minus-control spread CANCELS across the realized mix of
+        # surprises — so it is real heterogeneity (the hawkish-vs-dovish contrast
+        # is significant) but NOT a tradable signed alpha net of costs. This is
+        # what makes fed_effect_is_tradable=False hold structurally, not by a
+        # knife-edge p-value.
         if rate_change != 0.0:
             returns[lo : hi + 1, rate_sensitive_mask] += rate_change * per_day_tilt
 
@@ -290,6 +308,7 @@ def rate_sensitive_panel(
     *,
     seed: int = 7,
     injected_car: float = 0.012,
+    surprise_tilt_frac: float = 0.6,
     **kwargs: Any,
 ) -> SyntheticPanel:
     """Generate a panel with pronounced rate-sensitivity DiD heterogeneity.
@@ -313,7 +332,12 @@ def rate_sensitive_panel(
     SyntheticPanel
         The rate-sensitive panel with ground-truth metadata.
     """
-    return synthetic_event_panel(seed=seed, injected_car=injected_car, **kwargs)
+    return synthetic_event_panel(
+        seed=seed,
+        injected_car=injected_car,
+        surprise_tilt_frac=surprise_tilt_frac,
+        **kwargs,
+    )
 
 
 def pure_noise_panel(

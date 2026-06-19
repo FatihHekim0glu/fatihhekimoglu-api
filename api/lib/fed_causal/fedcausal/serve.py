@@ -197,26 +197,57 @@ def _did_spread_samples(
 def _spec_grid_pvalues(
     returns: pd.DataFrame,
     market: pd.Series,
-    windows_list: list[EventWindows],
+    announcement_dates: list[Any],
+    surprise_by_date: dict[Any, SurpriseLabel],
+    *,
+    estimation_window: int,
 ) -> Any:
-    """HAC p-values across the (model) spec grid (honest ``n_tests``).
+    """HAC p-values across the FULL spec grid (honest ``n_tests``).
 
-    The honest multiple-testing count reflects EVERY spec actually evaluated.
-    Both expected-return models (``market`` and ``mean_adjusted``) are scored on
-    the same event set; the full hosted grid additionally spans windows and
-    surprise subsets, but the two models demonstrate the honest correction
-    without a heavy live sweep.
+    The honest multiple-testing family is the cross product a researcher could
+    have explored: event-window half-width x expected-return model x surprise
+    subset. Each FEASIBLE spec contributes one HAC p-value of its mean CAR;
+    infeasible specs (too little history at a wider window, or an empty surprise
+    subset) are skipped and NOT counted, so ``n_tests`` equals exactly the number
+    of specifications actually evaluated — never an undercount that would make the
+    Benjamini-Hochberg correction artificially lenient.
     """
     import numpy as np
 
+    from fedcausal.events.windows import build_all_windows
     from fedcausal.eventstudy.abnormal import stack_event_cars
     from fedcausal.eventstudy.tests import hac_car_test
 
+    half_widths: tuple[int, ...] = (1, 2, 3)
+    spec_models: tuple[ModelKind, ...] = ("market", "mean_adjusted")
+    surprise_subsets: tuple[str, ...] = ("all", "hawkish", "dovish")
+
     pvalues: list[float] = []
-    for spec_model in ("market", "mean_adjusted"):
-        cars = stack_event_cars(returns, market, windows_list, model=spec_model)
-        _mean, _se, pvalue = hac_car_test(cars)
-        pvalues.append(float(pvalue))
+    for k in half_widths:
+        try:
+            windows = build_all_windows(
+                returns.index,  # type: ignore[arg-type]
+                announcement_dates,
+                event_half_width=k,
+                estimation_window=estimation_window,
+                estimation_gap=DEFAULT_ESTIMATION_GAP,
+            )
+        except ValidationError:
+            # A wider window may not fit the available history — skip that width.
+            continue
+        if len(windows) < _MIN_EVENTS:
+            continue
+        surprises = [surprise_by_date[w.announcement_date] for w in windows]
+        for spec_model in spec_models:
+            for subset in surprise_subsets:
+                wl, _kept = _filter_by_surprise(windows, surprises, subset)
+                if len(wl) < _MIN_EVENTS:
+                    continue
+                cars = stack_event_cars(returns, market, wl, model=spec_model)
+                if cars.size < _MIN_EVENTS:
+                    continue
+                _mean, _se, pvalue = hac_car_test(cars)
+                pvalues.append(float(pvalue))
     return np.asarray(pvalues, dtype=np.float64)
 
 
@@ -358,8 +389,15 @@ def _run_pipeline(
     spread_samples = _did_spread_samples(did_abnormal, all_surprises, panel.rate_sensitive)
     spread = heterogeneity_spread(did, spread_samples, cost_bps=DEFAULT_COST_BPS, alpha=alpha)
 
-    # ---- multiple-testing correction over the model spec grid ------------- #
-    grid_pvalues = _spec_grid_pvalues(panel.returns, panel.market, windows_list)
+    # ---- multiple-testing correction over the FULL spec grid -------------- #
+    # (event-window width x model x surprise subset — the honest multiplicity).
+    grid_pvalues = _spec_grid_pvalues(
+        panel.returns,
+        panel.market,
+        panel.announcement_dates,
+        surprise_by_date,
+        estimation_window=estimation_window,
+    )
     mt = benjamini_hochberg(grid_pvalues, alpha=alpha)
 
     # ---- the PURE verdict ------------------------------------------------- #
@@ -369,7 +407,11 @@ def _run_pipeline(
             hac_pvalue=tests.hac_pvalue,
             multiple_testing_survives=mt.any_survives,
             did_net_spread=spread.net_spread,
-            did_spread_pvalue=did.p_value if spread.net_spread > 0.0 else 1.0,
+            # Condition 4 must gate on the NET-of-cost spread significance (which
+            # already prices in transaction costs), NOT the gross clustered-DiD
+            # interaction p-value. spread.net_pvalue is exactly the p-value behind
+            # spread.is_tradable_spread.
+            did_spread_pvalue=spread.net_pvalue,
         ),
         alpha=alpha,
     )

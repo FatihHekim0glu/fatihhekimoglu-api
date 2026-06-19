@@ -3,8 +3,8 @@
   "known_car_recovery": {
     "injected_car": 0.01,
     "n_events": 16,
-    "recovered_control_mean_car": 0.001382510620788229,
-    "recovered_treated_mean_car": 0.00984001957860384
+    "recovered_control_mean_car": 0.010734906183428719,
+    "recovered_treated_mean_car": 0.009602415371474575
   },
   "package_version": "0.1.0",
   "pure_noise_honest_null": {
@@ -18,7 +18,7 @@
     "did_pvalue": 0.9779986174765499,
     "fed_effect_is_tradable": false,
     "n_events": 16,
-    "n_tests": 2,
+    "n_tests": 18,
     "placebo_pctile": 72.0,
     "placebo_pvalue": 0.28,
     "verdict_rationale": "Not tradable: the FOMC move is cross-sectional heterogeneity, not a placebo-robust tradable alpha \u2014 failing placebo-percentile significance, HAC-robust mean CAR, multiple-testing survival across the full grid, a net-of-cost tradable DiD spread."
@@ -35,17 +35,17 @@
   },
   "schema_version": 1,
   "summary": {
-    "bmp_stat": 5.7977935224045245,
-    "car_hac_pvalue": 6.442285331347221e-14,
-    "car_mean": 0.004765514203914473,
-    "car_tstat": 5.529378083649987,
+    "bmp_stat": 12.94547771241312,
+    "car_hac_pvalue": 9.632197274740076e-70,
+    "car_mean": 0.010281909858647062,
+    "car_tstat": 13.984513010266088,
     "data_source": "synthetic",
-    "did_coef": 0.009731561200097771,
-    "did_net_spread": 0.0036831548910338722,
-    "did_pvalue": 0.07822649490588407,
+    "did_coef": 0.002250701110134652,
+    "did_net_spread": -0.0009108040728885373,
+    "did_pvalue": 0.6616446296686148,
     "fed_effect_is_tradable": false,
     "n_events": 16,
-    "n_tests": 2,
+    "n_tests": 18,
     "placebo_pctile": 100.0,
     "placebo_pvalue": 0.0,
     "verdict_rationale": "Not tradable: the FOMC move is cross-sectional heterogeneity, not a placebo-robust tradable alpha \u2014 failing a net-of-cost tradable DiD spread."

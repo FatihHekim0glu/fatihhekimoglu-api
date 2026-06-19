@@ -368,15 +368,39 @@ def load_event_panel(
         return synthetic_event_panel(seed=seed), "synthetic"
 
 
+#: A STATIC representative basket for the real-data path: rate-sensitive names
+#: (financials + a long-duration Treasury proxy) as the DiD "treated" group, and
+#: rate-insensitive large-caps as the control group. This is deliberately NOT an
+#: as-of point-in-time index-membership resolution — building the latter requires
+#: the vendored Polygon grouped-daily PIT universe and an event-date as-of join,
+#: which is documented as a Limitation / future-work item. Using a fixed modern
+#: basket means the real-data path is exposed to survivorship bias; the deployed
+#: default runs on the synthetic panel, where this does not apply.
+_DEFAULT_REAL_DATA_BASKET: tuple[str, ...] = (
+    # Rate-sensitive (DiD "treated"): financials + long-duration Treasury proxy.
+    "JPM",
+    "BAC",
+    "WFC",
+    "GS",
+    "XLF",
+    "TLT",
+    # Rate-insensitive (DiD "control"): mega-cap tech + staples.
+    "AAPL",
+    "MSFT",
+    "PG",
+    "KO",
+    "JNJ",
+    "WMT",
+)
+
+
 def _default_pit_tickers() -> list[str]:
-    """Best-effort PIT ticker list from the vendored Polygon universe, else a stub.
+    """Return the STATIC representative basket for the real-data path.
 
-    Tries the vendored point-in-time S&P 500 universe; on any failure returns a
-    small liquid default set. Never raises.
+    NOTE: this is a fixed modern basket, NOT an as-of point-in-time index
+    membership set — the real-data Polygon path therefore carries survivorship
+    bias (a documented Limitation). The deployed default runs on the synthetic
+    panel, where this does not apply. Returning a static list keeps the loader
+    honest: there is no silently-failing "PIT resolver" import behind it.
     """
-    try:  # pragma: no cover - exercised only on the real-data path
-        from fedcausal.data_providers.polygon import default_universe  # type: ignore[attr-defined]
-
-        return list(default_universe())
-    except (ImportError, AttributeError, OSError):
-        return ["AAPL", "MSFT", "JPM", "XLF", "TLT"]
+    return list(_DEFAULT_REAL_DATA_BASKET)
