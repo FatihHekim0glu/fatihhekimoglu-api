@@ -397,7 +397,11 @@ def run_harness(
     soundness_values: list[float] = []  # one citation-soundness fraction per answered question
 
     for question in eval_questions:
-        result = search(question.question, index, embedder, top_k=k)
+        # Scope retrieval to the question's issuer (per-company): a question about
+        # ticker A must only retrieve A's chunks, never another issuer's. The index
+        # is filtered to the ticker's CIK so the harness measures per-filing recall.
+        scoped = _scope_index_to_ticker(index, question.ticker)
+        result = search(question.question, scoped, embedder, top_k=k)
         retrieved_ids = [hit.chunk.chunk_id for hit in result.retrieved]
 
         if question.out_of_document:
@@ -441,16 +445,24 @@ def run_harness(
 
 
 def _citation_soundness(question: str, result: RetrievalResult) -> float:
-    """Return the fraction of a result's cited chunks that ENTAIL the question (proxy).
+    """Return the fraction of a result's cited chunks on-topic for the question (proxy).
 
     The cited chunks are the retrieved chunks that clear the retrieval abstention
     threshold (the genuinely-supported ones — a chunk scoring below the floor is not
     real support and is not treated as a citation, matching the grounding contract).
-    Citation-soundness is the fraction of those cited chunks whose text entails the
-    question under :func:`entailment_proxy` — a deterministic, reproducible signal
-    that the cited support is on-topic (NOT a perfect-accuracy claim). When no chunk
-    clears the floor the result would have abstained, so this is reached only with
-    at least one cited chunk.
+
+    HONEST PROXY DIRECTION: in the KEY-FREE harness the answer is EXTRACTIVE (it just
+    reproduces the cited chunks verbatim), so an answer-claim↔cited-chunk entailment
+    check would be ~1.0 by construction and uninformative. The harness instead reports
+    a weaker, honest signal — the fraction of cited chunks whose text is on-topic for
+    the QUESTION under the deterministic lexical-overlap proxy (question↔chunk topical
+    overlap), i.e. a measure of whether the retrieved support is relevant, NOT a
+    learned answer-faithfulness score. (The SERVE path, by contrast, scores
+    cited-chunk↔answer entailment for its per-response ``answer_is_grounded`` verdict,
+    which is the meaningful direction once a generative answer can diverge from the
+    chunk text.) Deterministic and reproducible — NOT a perfect-accuracy claim. When
+    no chunk clears the floor the result would have abstained, so this is reached only
+    with at least one cited chunk.
     """
     cited = [hit for hit in result.retrieved if hit.score >= result.threshold]
     if not cited:  # pragma: no cover - reached only for a non-abstaining result
@@ -459,6 +471,23 @@ def _citation_soundness(question: str, result: RetrievalResult) -> float:
         1 for hit in cited if _overlap_score(question, hit.chunk.text) >= ENTAILMENT_THRESHOLD
     )
     return entailed / len(cited)
+
+
+def _scope_index_to_ticker(index: CorpusIndex, ticker: str) -> CorpusIndex:
+    """Return ``index`` scoped to ``ticker``'s issuer CIK (per-company retrieval).
+
+    Resolves the ticker to its committed CIK and filters the index to that issuer's
+    chunks so the harness measures per-filing retrieval (no cross-issuer leakage).
+    If the ticker cannot be resolved or its CIK is absent from the index (e.g. a
+    test fixture index that carries synthetic CIKs), the index is returned unscoped
+    so the harness still runs.
+    """
+    from rag10k.ingest.cached_corpus import resolve_ticker_to_cik
+
+    cik = resolve_ticker_to_cik(ticker)
+    if cik is not None and cik in index.ciks:
+        return index.for_cik(cik)
+    return index
 
 
 def _mean(values: Sequence[float]) -> float:

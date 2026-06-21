@@ -225,6 +225,54 @@ class CorpusIndex:
         ]
         return cls(vectors, chunks)
 
+    def for_cik(self, cik: str) -> CorpusIndex:
+        """Return a sub-index restricted to the chunks of issuer ``cik`` (ticker scoping).
+
+        Retrieval must be PER-COMPANY: a query for one issuer must never return a
+        chunk whose provenance belongs to another. When the loaded index is the
+        combined bundle (it hosts several filings), this filters it to a single
+        issuer's chunks by their per-chunk ``cik`` provenance, so a ticker→CIK
+        resolution scopes retrieval even off the mixed bundle. The returned index
+        shares the (read-only) vector rows of the matching chunks.
+
+        Parameters
+        ----------
+        cik:
+            The zero-padded issuer CIK to scope to.
+
+        Returns
+        -------
+        CorpusIndex
+            A sub-index over only the chunks whose ``cik`` matches.
+
+        Raises
+        ------
+        RetrievalError
+            If no chunk in the index belongs to ``cik`` (the issuer is not in this
+            bundle).
+        """
+        import numpy as np
+
+        from rag10k._exceptions import RetrievalError
+
+        target = str(cik).strip()
+        rows = [row for row, chunk in enumerate(self._chunks) if chunk.cik == target]
+        if not rows:
+            raise RetrievalError(
+                f"CorpusIndex.for_cik: no chunk in the index belongs to CIK {target!r}."
+            )
+        if len(rows) == self.n_chunks:
+            # Already single-issuer (a per-ticker index) — return self unchanged.
+            return self
+        sub_vectors = np.ascontiguousarray(self._vectors[rows], dtype=np.float32)
+        sub_chunks = [self._chunks[row] for row in rows]
+        return CorpusIndex(sub_vectors, sub_chunks)
+
+    @property
+    def ciks(self) -> frozenset[str]:
+        """Return the set of distinct issuer CIKs present in the index."""
+        return frozenset(chunk.cik for chunk in self._chunks)
+
     @classmethod
     def from_chunks(cls, chunks: list[Chunk], vectors: EmbeddingMatrix) -> CorpusIndex:
         """Build an in-memory index from chunks + their (already-embedded) vectors.

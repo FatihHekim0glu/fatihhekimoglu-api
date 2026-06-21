@@ -4,9 +4,10 @@ The console entrypoint (``rag-10k``) exposes four commands:
 
 - ``ingest`` — fetch (or load the cached) 10-K for a ticker and print its
   parsed-section summary (lazy httpx; cache/synthetic fallback; no LLM key).
-- ``index``  — the OFFLINE build: export the ONNX embedder (1e-4 parity) and embed
-  the committed corpus into the read-only index (the only command that pulls the
-  ``[embed]`` extra, torch).
+- ``index``  — the OFFLINE build: export the ONNX embedder (1e-4 parity), embed the
+  committed real-text corpus into the read-only combined + per-ticker indexes,
+  regenerate the frozen eval set, and recompute ``eval.json`` (the only command that
+  pulls the ``[embed]`` extra, torch).
 - ``ask``    — answer one question end-to-end over the committed corpus
   (retrieve -> abstain-or-extractive[-or-generative]), printing the grounded/
   abstained verdict + the citations. Key-free by default.
@@ -154,9 +155,11 @@ def index(*, tickers: str = "AAPL", seed: int = 7) -> int:
     """Run the OFFLINE export + index build (the ``[embed]`` extra, torch).
 
     Delegates to :func:`rag10k.embed.build_index.build_all`: export the ONNX
-    embedder (1e-4 parity vs torch) and embed the committed corpus into the
-    read-only index. Prints the artifact paths, the chunk count, and the parity
-    error. The ONLY command that pulls in torch.
+    embedder (1e-4 parity vs torch), embed the committed real-text corpus into the
+    read-only combined + per-ticker indexes, regenerate the frozen eval set (so every
+    gold chunk id provably exists in the index), and recompute ``eval.json``. Prints
+    the artifact paths, the chunk count, and the parity error. The ONLY command that
+    pulls in torch.
 
     Parameters
     ----------

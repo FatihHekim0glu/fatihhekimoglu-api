@@ -490,6 +490,89 @@ def build_eval_summary(*, artifact_dir: str | Path | None = None) -> Path:
     return eval_path
 
 
+#: Issuers the committed corpus is refreshed from (ticker -> zero-padded CIK).
+_REFRESH_ISSUERS: dict[str, str] = {
+    "AAPL": "0000320193",
+    "MSFT": "0000789019",
+    "NVDA": "0001045810",
+}
+
+#: Per-section token budget for the committed corpus slice (so chunking yields ~50
+#: chunks per filing — a meaningful benchmark, not a toy).
+_REFRESH_RF_TOKENS: int = 3000
+_REFRESH_MDA_TOKENS: int = 1800
+
+
+def refresh_cached_corpus(
+    *,
+    fiscal_year: int = 2023,
+    artifact_dir: str | Path | None = None,
+) -> dict[str, dict[str, str]]:  # pragma: no cover - offline, network (live EDGAR)
+    """Fetch real EDGAR 10-Ks and extract token-bounded Item 1A / Item 7 sections.
+
+    OFFLINE, NETWORK helper that regenerates the committed cached-corpus text in
+    :mod:`rag10k.ingest.cached_corpus`. For each issuer it fetches the fiscal-year
+    10-K from SEC EDGAR (acceptance-datetime keyed), parses the real Risk Factors +
+    MD&A sections with the robust anchored parser, and caps each at a fixed token
+    budget so the committed slice is substantial yet deterministic. Returns the
+    extracted ``{ticker: {risk_factors, mda, cik, accession, acceptance, period}}``
+    mapping (the operator writes it into ``cached_corpus.py``).
+
+    This is the documented provenance of the committed real-text corpus; it is never
+    imported on the serve path (it pulls the lazy EDGAR client) and is wrapped in a
+    ``pragma: no cover`` because it requires live network.
+
+    Parameters
+    ----------
+    fiscal_year:
+        The calendar year of the EDGAR acceptance datetime to fetch.
+    artifact_dir:
+        Unused destination hook (kept for signature parity with the other builders).
+
+    Returns
+    -------
+    dict[str, dict[str, str]]
+        The extracted per-issuer section text + provenance.
+
+    Raises
+    ------
+    IngestError
+        On any EDGAR fetch failure.
+    """
+    import tiktoken
+
+    from rag10k.ingest.client import EdgarClient
+    from rag10k.parse.sections import extract_sections, normalize_text
+
+    del artifact_dir  # destination hook (the operator pastes the result into source)
+    encoding = tiktoken.get_encoding("cl100k_base")
+
+    def _cap(text: str, max_tokens: int) -> str:
+        ids = encoding.encode(text)
+        if len(ids) <= max_tokens:
+            return text.strip()
+        _decoded, starts = encoding.decode_with_offsets(ids)
+        cut = starts[max_tokens] if max_tokens < len(starts) else len(text)
+        out = text[:cut].rstrip()
+        sentence_end = out.rfind(". ")
+        return (out[: sentence_end + 1] if sentence_end > 200 else out).strip()
+
+    out: dict[str, dict[str, str]] = {}
+    for ticker, cik in _REFRESH_ISSUERS.items():
+        filing = EdgarClient().fetch_10k_for_year(year=fiscal_year, cik=cik)
+        normalized = normalize_text(filing.raw_text)
+        parsed = extract_sections(normalized)
+        out[ticker] = {
+            "cik": cik,
+            "accession": filing.accession_no,
+            "acceptance": filing.acceptance_datetime.isoformat(),
+            "period": filing.period_of_report,
+            "risk_factors": _cap(parsed.sections.get("risk_factors", ""), _REFRESH_RF_TOKENS),
+            "mda": _cap(parsed.sections.get("mda", ""), _REFRESH_MDA_TOKENS),
+        }
+    return out
+
+
 def build_all(
     *,
     tickers: Sequence[str] = ("AAPL", "MSFT", "NVDA"),
@@ -533,11 +616,24 @@ def build_all(
     onnx_path, tokenizer_path, parity_error = export_embedder_to_onnx(artifact_dir=out_dir)
 
     # 2) Load + parse + chunk each ticker's cached 10-K deterministically, then embed
-    #    every chunk into the committed read-only index via the just-exported embedder.
-    chunks = _load_corpus_chunks(tuple(tickers))
+    #    every chunk into the committed read-only COMBINED index AND a per-ticker index
+    #    (so ticker scoping has a dedicated single-issuer bundle) via the just-exported
+    #    embedder.
+    chunks_by_ticker = _load_corpus_chunks_by_ticker(tuple(tickers))
+    chunks = [chunk for ticker_chunks in chunks_by_ticker.values() for chunk in ticker_chunks]
     index_path = build_corpus_index(chunks, artifact_dir=out_dir)
+    for ticker, ticker_chunks in chunks_by_ticker.items():
+        build_corpus_index(
+            ticker_chunks, artifact_dir=out_dir, index_filename=f"corpus_index_{ticker}.npz"
+        )
 
-    # 3) Run the FROZEN 150-Q harness over the just-built index + the served ONNX
+    # 3) Regenerate the FROZEN eval set from the just-built corpus so EVERY gold chunk
+    #    id provably exists in the committed index (the invariant guarding recall@k).
+    from rag10k.eval.eval_builder import build_eval_set
+
+    build_eval_set(artifact_dir=out_dir, write=True)
+
+    # 4) Run the FROZEN 150-Q harness over the just-built index + the served ONNX
     #    embedder and commit the honest eval summary (recall@k / citation-soundness /
     #    abstention rate) to eval.json.
     eval_path = build_eval_summary(artifact_dir=out_dir)
@@ -552,6 +648,7 @@ def build_all(
             "model_name": REFERENCE_MODEL_NAME,
             "embedding_dim": EMBEDDING_DIM,
             "tickers": list(tickers),
+            "per_ticker_chunks": {t: len(c) for t, c in chunks_by_ticker.items()},
             "seed": seed,
             "eval_path": str(eval_path),
         },
@@ -592,23 +689,27 @@ def _mean_pool_l2(token_embeddings: Any, attention_mask: Any) -> Any:
     return np.ascontiguousarray(normalized, dtype=np.float32)
 
 
-def _load_corpus_chunks(tickers: Sequence[str]) -> list[Chunk]:  # pragma: no cover - offline build
-    """Load + parse + chunk each ticker's cached 10-K into the committed corpus chunks.
+def _load_corpus_chunks_by_ticker(
+    tickers: Sequence[str],
+) -> dict[str, list[Chunk]]:  # pragma: no cover - offline build
+    """Load + parse + chunk each ticker's cached 10-K, grouped by ticker.
 
     Offline-only helper for :func:`build_all`: it leans on the import-pure ingest /
-    parse / chunk modules (no torch, no network — the cached fixtures). Wrapped in a
-    ``pragma: no cover`` because the committed corpus is built once, offline.
+    parse / chunk modules (no torch, no network — the cached fixtures). Returns a
+    ticker → chunks mapping so the builder can write both the combined bundle and a
+    per-ticker index. Wrapped in a ``pragma: no cover`` because the committed corpus
+    is built once, offline.
     """
     from rag10k.chunk.splitter import chunk_filing
     from rag10k.ingest.cached_corpus import load_cached_filing
     from rag10k.parse.sections import extract_sections
 
-    chunks: list[Chunk] = []
+    out: dict[str, list[Chunk]] = {}
     for ticker in tickers:
         filing = load_cached_filing(ticker)
         parsed = extract_sections(filing.raw_text)
-        chunks.extend(chunk_filing(filing, parsed))
-    return chunks
+        out[ticker] = chunk_filing(filing, parsed)
+    return out
 
 
 if __name__ == "__main__":  # pragma: no cover - offline build entrypoint

@@ -214,9 +214,7 @@ def run_query(
     retrieval = search(question, corpus_index, used_embedder, top_k=top_k, threshold=threshold)
 
     eval_summary = (
-        _eval_summary_dict(used_embedder, corpus_index, artifact_dir=artifact_dir)
-        if include_eval
-        else {}
+        _eval_summary_dict(used_embedder, artifact_dir=artifact_dir) if include_eval else {}
     )
     figure = _retrieval_figure(retrieval, threshold=threshold) if include_figure else {}
 
@@ -344,18 +342,30 @@ def _load_corpus(
 
 
 def _load_committed_index(ticker: str, *, artifact_dir: str | Path | None) -> CorpusIndex:
-    """Load the committed index for ``ticker``, falling back to the default bundle.
+    """Load the committed index for ``ticker``, SCOPED to that issuer's filing.
 
-    A per-ticker ``corpus_index_<TICKER>.npz`` is preferred when present; otherwise
-    the default ``corpus_index.npz`` bundle (which may host several filings) is
-    loaded. Raises :class:`~rag10k._exceptions.ArtifactError` only when neither
-    exists.
+    Retrieval is per-company (no cross-filing leakage): a per-ticker
+    ``corpus_index_<TICKER>.npz`` is preferred when present (already single-issuer);
+    otherwise the default ``corpus_index.npz`` bundle (which hosts several filings)
+    is loaded and FILTERED to the requested ticker's CIK via
+    :meth:`~rag10k.retrieve.index.CorpusIndex.for_cik`, so the mixed bundle never
+    answers a ticker A query with a ticker B chunk. If the ticker cannot be resolved
+    to a CIK (an unknown issuer), the full bundle is returned unscoped so the
+    endpoint still answers rather than hard-failing. Raises
+    :class:`~rag10k._exceptions.ArtifactError` only when no index artifact exists.
     """
+    from rag10k.ingest.cached_corpus import resolve_ticker_to_cik
     from rag10k.retrieve.index import CorpusIndex, index_present
 
     if index_present(ticker, artifact_dir=artifact_dir):
         return CorpusIndex.load(ticker, artifact_dir=artifact_dir)
-    return CorpusIndex.load(None, artifact_dir=artifact_dir)
+
+    bundle = CorpusIndex.load(None, artifact_dir=artifact_dir)
+    cik = resolve_ticker_to_cik(ticker)
+    if cik is not None and cik in bundle.ciks:
+        # Scope the mixed bundle to the requested issuer's chunks (no leakage).
+        return bundle.for_cik(cik)
+    return bundle
 
 
 def _try_fetch_and_index(ticker: str, embedder: Any) -> CorpusIndex | None:
@@ -500,39 +510,88 @@ def _retrieval_figure(retrieval: RetrievalResult, *, threshold: float) -> dict[s
 
 def _eval_summary_dict(
     embedder: Any,
-    corpus_index: CorpusIndex,
     *,
     artifact_dir: str | Path | None,
 ) -> dict[str, Any]:
     """Return the frozen-harness ``eval_summary`` block (cached per process).
 
-    Runs the deterministic FROZEN 150-Q harness over the committed corpus +
-    embedder ONCE per artifact dir and memoizes it, so the honest IR metrics
-    (recall@k, citation-soundness, abstention rate, n_questions) ride on every
-    response without re-running 150 retrievals per query. Degrades to an empty
-    block if the harness cannot run (e.g. the committed eval set is unavailable).
+    The eval summary is a property of the WHOLE committed 150-Q harness over the
+    FULL committed corpus — it is independent of which ticker the request asked
+    about. It is read from the committed ``eval.json`` (the canonical frozen number,
+    built offline over the full corpus); if that artifact is unavailable, it falls
+    back to running the deterministic harness over the FULL combined index (NOT the
+    per-ticker-scoped one, since the harness spans all three issuers and scopes each
+    question internally). Memoized per artifact dir so it is computed at most once.
+    Degrades to an empty block if neither source is available.
     """
-    from rag10k._exceptions import Rag10kError
-    from rag10k.eval.harness import run_harness
-
     cache_key = str(artifact_dir) if artifact_dir is not None else "<default>"
     cached = _EVAL_SUMMARY_CACHE.get(cache_key)
     if cached is not None:
         return dict(cached)
 
+    committed = _read_committed_eval_summary(artifact_dir=artifact_dir)
+    if committed is not None:
+        _EVAL_SUMMARY_CACHE[cache_key] = committed
+        return dict(committed)
+
+    block = _harness_eval_summary(embedder, artifact_dir=artifact_dir)
+    if block:
+        _EVAL_SUMMARY_CACHE[cache_key] = block
+    return dict(block)
+
+
+def _read_committed_eval_summary(*, artifact_dir: str | Path | None) -> dict[str, Any] | None:
+    """Read the committed ``eval.json`` honest IR summary block, or ``None`` if absent.
+
+    The deployed response quotes the committed frozen-harness summary built offline
+    over the full corpus; reading it avoids re-running 150 retrievals per server and
+    keeps the served numbers byte-identical to the committed ones.
+    """
+    import json
+    from pathlib import Path as _Path
+
+    from rag10k.embed.build_index import EVAL_SUMMARY_NAME
+    from rag10k.embed.onnx_embedder import default_artifact_dir
+
+    directory = _Path(artifact_dir) if artifact_dir is not None else default_artifact_dir()
+    path = directory / EVAL_SUMMARY_NAME
+    if not path.is_file():
+        return None
     try:
-        summary: EvalSummary = run_harness(corpus_index, embedder)
+        summary = json.loads(path.read_text(encoding="utf-8"))["summary"]
+    except (OSError, ValueError, KeyError, TypeError):  # pragma: no cover - defensive
+        return None
+    return {
+        "recall_at_k": float(summary["recall_at_k"]),
+        "citation_soundness": float(summary["citation_soundness"]),
+        "abstention_rate": float(summary["abstention_rate"]),
+        "n_questions": int(summary["n_questions"]),
+    }
+
+
+def _harness_eval_summary(embedder: Any, *, artifact_dir: str | Path | None) -> dict[str, Any]:
+    """Run the frozen harness over the FULL committed bundle (fallback for ``eval.json``).
+
+    Loads the FULL combined corpus index (the harness scopes each question to its
+    own issuer internally) and runs the deterministic 150-Q harness. Returns an empty
+    block if the committed eval set / index cannot be loaded.
+    """
+    from rag10k._exceptions import Rag10kError
+    from rag10k.eval.harness import run_harness
+    from rag10k.retrieve.index import CorpusIndex
+
+    try:
+        full_index = CorpusIndex.load(None, artifact_dir=artifact_dir)
+        summary: EvalSummary = run_harness(full_index, embedder)
     except Rag10kError:  # pragma: no cover - the committed eval set ships with the package
         return {}
 
-    block = {
+    return {
         "recall_at_k": float(summary.recall_at_k),
         "citation_soundness": float(summary.citation_soundness),
         "abstention_rate": float(summary.abstention_rate),
         "n_questions": int(summary.n_questions),
     }
-    _EVAL_SUMMARY_CACHE[cache_key] = block
-    return dict(block)
 
 
 def _abstention_message() -> str:
