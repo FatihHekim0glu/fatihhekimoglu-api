@@ -1,0 +1,1147 @@
+"""Committed cached 10-K corpus (real, public-domain SEC EDGAR 10-K sections).
+
+This module SHIPS a committed bundle of REAL Item 1A (Risk Factors) and Item 7
+(MD&A) text for three well-known issuers (AAPL / MSFT / NVDA), drawn verbatim from
+their fiscal-2023 Form 10-K filings on SEC EDGAR. SEC filings are U.S. government
+public records (public domain). Each entry carries the issuer CIK, the real EDGAR
+accession number, and the filing's real EDGAR ACCEPTANCE DATETIME (the
+public-dissemination clock, never the period-of-report).
+
+The committed text is a substantial, token-bounded slice of each filing's real Item
+1A / Item 7 sections (normalized to plain text: HTML stripped, entities unescaped,
+whitespace collapsed) - enough that section-aware chunking yields ~50 chunks per
+filing, so retrieval is a meaningful benchmark (NOT a top-k-of-nine toy). The slice
+begins at the section's body header and is capped at a fixed token budget so the
+committed corpus is deterministic and reproducible offline (no fragile end-boundary
+heuristics). The provenance (CIK / accession / acceptance datetime) is the real
+public EDGAR metadata, so a citation points at an actual filing.
+
+Importing this module has no side effects and touches no network. It is the
+``data_source="cache"`` substrate consumed by the chunker / index builder and the
+deployed ``EDGAR -> cache -> synthetic`` fallback. It was generated offline by
+:func:`rag10k.embed.build_index.refresh_cached_corpus` from a live EDGAR fetch; the
+committed text is then the frozen, network-free corpus the build + tests run over.
+"""
+
+from __future__ import annotations
+
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Final, NamedTuple
+
+from rag10k._exceptions import ValidationError
+
+if TYPE_CHECKING:
+    from rag10k.ingest.client import Filing
+
+
+class CachedFiling(NamedTuple):
+    """One committed cached 10-K (well-known issuer) with full provenance.
+
+    Attributes
+    ----------
+    ticker:
+        The issuer ticker the cached filing answers for.
+    cik:
+        The zero-padded SEC CIK of the filer (real public EDGAR metadata).
+    accession_no:
+        The real EDGAR accession number of the source filing (provenance).
+    acceptance_datetime:
+        The real EDGAR ACCEPTANCE DATETIME (public-dissemination clock).
+    period_of_report:
+        The fiscal period the 10-K covers (reference only; never a signal date).
+    risk_factors:
+        Real Item 1A (Risk Factors) text (anchored ``Item 1A.`` header).
+    mda:
+        Real Item 7 (MD&A) text (anchored ``Item 7.`` header).
+    """
+
+    ticker: str
+    cik: str
+    accession_no: str
+    acceptance_datetime: datetime
+    period_of_report: str
+    risk_factors: str
+    mda: str
+
+    def document_text(self) -> str:
+        """Assemble the cached sections into anchored, parseable 10-K document text.
+
+        The Item headers are emitted in canonical order with a trailing ``Item 8``
+        header so the :mod:`rag10k.parse.sections` anchored parser can slice each
+        section to the next ``Item N`` boundary deterministically.
+        """
+        return "\n\n".join(
+            [
+                "UNITED STATES SECURITIES AND EXCHANGE COMMISSION  FORM 10-K",
+                f"Item 1. Business. {self.ticker} business overview.",
+                self.risk_factors,
+                "Item 1B. Unresolved Staff Comments. None.",
+                self.mda,
+                (
+                    "Item 8. Financial Statements and Supplementary Data. The "
+                    "consolidated financial statements are included elsewhere in "
+                    "this report."
+                ),
+            ]
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Committed cached filings (real Item 1A / Item 7 text for well-known issuers) #
+# Generated offline from SEC EDGAR fiscal-2023 10-Ks (public-domain records).  #
+# --------------------------------------------------------------------------- #
+_AAPL = CachedFiling(
+    ticker="AAPL",
+    cik="0000320193",
+    accession_no="0000320193-23-000106",
+    acceptance_datetime=datetime(2023, 11, 2, 22, 8, 27, tzinfo=UTC),
+    period_of_report="2023-09-30",
+    risk_factors=(
+        "Item 1A. Risk Factors The Company's business, reputation, results of operations, "
+        "financial condition and stock price can be affected by a number of factors, whether "
+        "currently known or unknown, including those described below. When any one or more of "
+        "these risks materialize from time to time, the Company's business, reputation, results "
+        "of operations, financial condition and stock price can be materially and adversely "
+        "affected. Because of the following factors, as well as other factors affecting the "
+        "Company's results of operations and financial condition, past financial performance "
+        "should not be considered to be a reliable indicator of future performance, and investors "
+        "should not use historical trends to anticipate results or trends in future periods. This "
+        "discussion of risk factors contains forward-looking statements. This section should be "
+        "read in conjunction with Part II, Item 7, \"Management's Discussion and Analysis of "
+        'Financial Condition and Results of Operations" and the consolidated financial statements '
+        'and accompanying notes in Part II, Item 8, "Financial Statements and Supplementary Data" '
+        "of this Form 10-K. Macroeconomic and Industry Risks The Company's operations and "
+        "performance depend significantly on global and regional economic conditions and adverse "
+        "economic conditions can materially adversely affect the Company's business, results of "
+        "operations and financial condition. The Company has international operations with sales "
+        "outside the U.S. representing a majority of the Company's total net sales. In addition, "
+        "the Company's global supply chain is large and complex and a majority of the Company's "
+        "supplier facilities, including manufacturing and assembly sites, are located outside the "
+        "U.S. As a result, the Company's operations and performance depend significantly on "
+        "global and regional economic conditions. Adverse macroeconomic conditions, including "
+        "slow growth or recession, high unemployment, inflation, tighter credit, higher interest "
+        "rates, and currency fluctuations, can adversely impact consumer confidence and spending "
+        "and materially adversely affect demand for the Company's products and services. In "
+        "addition, consumer confidence and spending can be materially adversely affected in "
+        "response to changes in fiscal and monetary policy, financial market volatility, declines "
+        "in income or asset values, and other economic factors. In addition to an adverse impact "
+        "on demand for the Company's products and services, uncertainty about, or a decline in, "
+        "global or regional economic conditions can have a significant impact on the Company's "
+        "suppliers, contract manufacturers, logistics providers, distributors, cellular network "
+        "carriers and other channel partners, and developers. Potential outcomes include "
+        "financial instability; inability to obtain credit to finance business operations; and "
+        "insolvency. Adverse economic conditions can also lead to increased credit and "
+        "collectibility risk on the Company's trade receivables; the failure of derivative "
+        "counterparties and other financial institutions; limitations on the Company's ability to "
+        "issue new debt; reduced liquidity; and declines in the fair values of the Company's "
+        "financial instruments. These and other impacts can materially adversely affect the "
+        "Company's business, results of operations, financial condition and stock price. The "
+        "Company's business can be impacted by political events, trade and other international "
+        "disputes, war, terrorism, natural disasters, public health issues, industrial accidents "
+        "and other business interruptions. Political events, trade and other international "
+        "disputes, war, terrorism, natural disasters, public health issues, industrial accidents "
+        "and other business interruptions can harm or disrupt international commerce and the "
+        "global economy, and could have a material adverse effect on the Company and its "
+        "customers, suppliers, contract manufacturers, logistics providers, distributors, "
+        "cellular network carriers and other channel partners. Apple Inc. | 2023 Form 10-K | 5 "
+        "The Company has a large, global business with sales outside the U.S. representing a "
+        "majority of the Company's total net sales, and the Company believes that it generally "
+        "benefits from growth in international trade. Substantially all of the Company's "
+        "manufacturing is performed in whole or in part by outsourcing partners located primarily "
+        "in China mainland, India, Japan, South Korea, Taiwan and Vietnam. Restrictions on "
+        "international trade, such as tariffs and other controls on imports or exports of goods, "
+        "technology or data, can materially adversely affect the Company's operations and supply "
+        "chain and limit the Company's ability to offer and distribute its products and services "
+        "to customers. The impact can be particularly significant if these restrictive measures "
+        "apply to countries and regions where the Company derives a significant portion of its "
+        "revenues and/or has significant supply chain operations. Restrictive measures can "
+        "require the Company to take various actions, including changing suppliers, restructuring "
+        "business relationships, and ceasing to offer third-party applications on its platforms. "
+        "Changing the Company's operations in accordance with new or changed restrictions on "
+        "international trade can be expensive, time-consuming and disruptive to the Company's "
+        "operations. Such restrictions can be announced with little or no advance notice and the "
+        "Company may not be able to effectively mitigate all adverse impacts from such measures. "
+        "For example, tensions between governments, including the U.S. and China, have in the "
+        "past led to tariffs and other restrictions being imposed on the Company's business. If "
+        "disputes and conflicts further escalate in the future, actions by governments in "
+        "response could be significantly more severe and restrictive and could materially "
+        "adversely affect the Company's business. Political uncertainty surrounding trade and "
+        "other international disputes could also have a negative effect on consumer confidence "
+        "and spending, which could adversely affect the Company's business. Many of the Company's "
+        "operations and facilities, as well as critical business operations of the Company's "
+        "suppliers and contract manufacturers, are in locations that are prone to earthquakes and "
+        "other natural disasters. In addition, such operations and facilities are subject to the "
+        "risk of interruption by fire, power shortages, nuclear power plant accidents and other "
+        "industrial accidents, terrorist attacks and other hostile acts, ransomware and other "
+        "cybersecurity attacks, labor disputes, public health issues, including pandemics such as "
+        "the COVID-19 pandemic, and other events beyond the Company's control. Global climate "
+        "change is resulting in certain types of natural disasters, such as droughts, floods, "
+        "hurricanes and wildfires, occurring more frequently or with more intense effects. Such "
+        "events can make it difficult or impossible for the Company to manufacture and deliver "
+        "products to its customers, create delays and inefficiencies in the Company's supply and "
+        "manufacturing chain, and result in slowdowns and outages to the Company's service "
+        "offerings, and negatively impact consumer spending and demand in affected areas. "
+        "Following an interruption to its business, the Company can require substantial recovery "
+        "time, experience significant expenditures to resume operations, and lose significant "
+        "sales. Because the Company relies on single or limited sources for the supply and "
+        "manufacture of many critical components, a business interruption affecting such sources "
+        "would exacerbate any negative consequences to the Company. The Company's operations are "
+        "also subject to the risks of industrial accidents at its suppliers and contract "
+        "manufacturers. While the Company's suppliers are required to maintain safe working "
+        "environments and operations, an industrial accident could occur and could result in "
+        "serious injuries or loss of life, disruption to the Company's business, and harm to the "
+        "Company's reputation. Major public health issues, including pandemics such as the "
+        "COVID-19 pandemic, have adversely affected, and could in the future materially adversely "
+        "affect, the Company due to their impact on the global economy and demand for consumer "
+        "products; the imposition of protective public safety measures, such as stringent "
+        "employee travel restrictions and limitations on freight services and the movement of "
+        "products between regions; and disruptions in the Company's operations, supply chain and "
+        "sales and distribution channels, resulting in interruptions to the supply of current "
+        "products and offering of existing services, and delays in production ramps of new "
+        "products and development of new services. While the Company maintains insurance coverage "
+        "for certain types of losses, such insurance coverage may be insufficient to cover all "
+        "losses that may arise. Global markets for the Company's products and services are highly "
+        "competitive and subject to rapid technological change, and the Company may be unable to "
+        "compete effectively in these markets. The Company's products and services are offered in "
+        "highly competitive global markets characterized by aggressive price competition and "
+        "resulting downward pressure on gross margins, frequent introduction of new products and "
+        "services, short product life cycles, evolving industry standards, continual improvement "
+        "in product price and performance characteristics, rapid adoption of technological "
+        "advancements by competitors, and price sensitivity on the part of consumers and "
+        "businesses. The Company's ability to compete successfully depends heavily on ensuring "
+        "the continuing and timely introduction of innovative new products, services and "
+        "technologies to the marketplace. The Company designs and develops nearly the entire "
+        "solution for its products, including the hardware, operating system, numerous software "
+        "applications and related services. As a result, the Company must make significant "
+        "investments in R&D. There can be no assurance these investments will achieve expected "
+        "returns, and the Company may not be able to develop and market new products and services "
+        "successfully. Apple Inc. | 2023 Form 10-K | 6 The Company currently holds a significant "
+        "number of patents, trademarks and copyrights and has registered, and applied to "
+        "register, additional patents, trademarks and copyrights. In contrast, many of the "
+        "Company's competitors seek to compete primarily through aggressive pricing and very low "
+        "cost structures, and by imitating the Company's products and infringing on its "
+        "intellectual property. Effective intellectual property protection is not consistently "
+        "available in every country in which the Company operates. If the Company is unable to "
+        "continue to develop and sell innovative new products with attractive margins or if "
+        "competitors infringe on the Company's intellectual property, the Company's ability to "
+        "maintain a competitive advantage could be materially adversely affected. The Company has "
+        "a minority market share in the global smartphone, personal computer and tablet markets. "
+        "The Company faces substantial competition in these markets from companies that have "
+        "significant technical, marketing, distribution and other resources, as well as "
+        "established hardware, software and digital content supplier relationships. In addition, "
+        "some of the Company's competitors have broader product lines, lower-priced products and "
+        "a larger installed base of active devices. Competition has been particularly intense as "
+        "competitors have aggressively cut prices and lowered product margins. Certain "
+        "competitors have the resources, experience or cost structures to provide products at "
+        "little or no profit or even at a loss. Some of the markets in which the Company competes "
+        "have from time to time experienced little to no growth or contracted overall. "
+        "Additionally, the Company faces significant competition as competitors imitate the "
+        "Company's product features and applications within their products or collaborate to "
+        "offer solutions that are more competitive than those they currently offer. The Company "
+        "also expects competition to intensify as competitors imitate the Company's approach to "
+        "providing components seamlessly within their offerings or work collaboratively to offer "
+        "integrated solutions. The Company's services also face substantial competition, "
+        "including from companies that have significant resources and experience and have "
+        "established service offerings with large customer bases. The Company competes with "
+        "business models that provide content to users for free. The Company also competes with "
+        "illegitimate means to obtain third-party digital content and applications. The Company's "
+        "business, results of operations and financial condition depend substantially on the "
+        "Company's ability to continually improve its products and services to maintain their "
+        "functional and design advantages. There can be no assurance the Company will be able to "
+        "continue to provide products and services that compete effectively. Business Risks To "
+        "remain competitive and stimulate customer demand, the Company must successfully manage "
+        "frequent introductions and transitions of products and services. Due to the highly "
+        "volatile and competitive nature of the markets and industries in which the Company "
+        "competes, the Company must continually introduce new products, services and "
+        "technologies, enhance existing products and services, effectively stimulate customer "
+        "demand for new and upgraded products and services, and successfully manage the "
+        "transition to these new and upgraded products and services. The success of new product "
+        "and service introductions depends on a number of factors, including timely and "
+        "successful development, market acceptance, the Company's ability to manage the risks "
+        "associated with new technologies and production ramp-up issues, the availability of "
+        "application software for the Company's products, the effective management of purchase "
+        "commitments and inventory levels in line with anticipated product demand, the "
+        "availability of products in appropriate quantities and at expected costs to meet "
+        "anticipated demand, and the risk that new products and services may have quality or "
+        "other defects or deficiencies. There can be no assurance the Company will successfully "
+        "manage future introductions and transitions of products and services. The Company "
+        "depends on component and product manufacturing and logistical services provided by "
+        "outsourcing partners, many of which are located outside of the U.S. Substantially all of "
+        "the Company's manufacturing is performed in whole or in part by outsourcing partners "
+        "located primarily in China mainland, India, Japan, South Korea, Taiwan and Vietnam, and "
+        "a significant concentration of this manufacturing is currently performed by a small "
+        "number of outsourcing partners, often in single locations. Changes or additions to the "
+        "Company's supply chain require considerable time and resources and involve significant "
+        "risks and uncertainties. The Company has also outsourced much of its transportation and "
+        "logistics management. While these arrangements can lower operating costs, they also "
+        "reduce the Company's direct control over production and distribution. Such diminished "
+        "control has from time to time and may in the future have an adverse effect on the "
+        "quality or quantity of products manufactured or services provided, or adversely affect "
+        "the Company's flexibility to respond to changing conditions. Although arrangements with "
+        "these partners may contain provisions for product defect expense reimbursement, the "
+        "Company generally remains responsible to the consumer for warranty and out-of-warranty "
+        "service in the event of product defects and experiences unanticipated product defect "
+        "liabilities from time to time. While the Company relies on its partners to adhere to its "
+        "supplier code of conduct, violations of the supplier code of conduct occur from time to "
+        "time and can materially adversely affect the Company's business, reputation, results of "
+        "operations and financial condition. Apple Inc. | 2023 Form 10-K | 7 The Company relies "
+        "on single-source outsourcing partners in the U.S., Asia and Europe to supply and "
+        "manufacture many components, and on outsourcing partners primarily located in Asia, for "
+        "final assembly of substantially all of the Company's hardware products. Any failure of "
+        "these partners to perform can have a negative impact on the Company's cost or supply of "
+        "components or finished goods. In addition, manufacturing or logistics in these locations "
+        "or transit to final destinations can be disrupted for a variety of reasons, including "
+        "natural and man-made disasters, information technology system failures, commercial "
+        "disputes, armed conflict, economic, business, labor, environmental, public health or "
+        "political issues, or international trade disputes. The Company has invested in "
+        "manufacturing process equipment, much of which is held at certain of its outsourcing "
+        "partners, and has made prepayments to certain of its suppliers associated with long-term "
+        "supply agreements. While these arrangements help ensure the supply of components and "
+        "finished goods, if these outsourcing partners or suppliers experience severe financial "
+        "problems or other disruptions in their business, such continued supply can be reduced or "
+        "terminated, and the recoverability of manufacturing process equipment or prepayments can "
+        "be negatively impacted. Future operating results depend upon the Company's ability to "
+        "obtain components in sufficient quantities on commercially reasonable terms. Because the "
+        "Company currently obtains certain components from single or limited sources, the Company "
+        "is subject to significant supply and pricing risks. Many components, including those "
+        "that are available from multiple sources, are at times subject to industry-wide "
+        "shortages and significant commodity pricing fluctuations that can materially adversely "
+        "affect the Company's business, results of operations and financial condition."
+    ),
+    mda=(
+        "Item 7. Management's Discussion and Analysis of Financial Condition and Results of "
+        "Operations. The following discussion should be read in conjunction with the consolidated "
+        "financial statements and accompanying notes included in Part II, Item 8 of this Form "
+        "10-K. This Item generally discusses 2023 and 2022 items and year-to-year comparisons "
+        "between 2023 and 2022. Discussions of 2021 items and year-to-year comparisons between "
+        "2022 and 2021 are not included, and can be found in \"Management's Discussion and "
+        'Analysis of Financial Condition and Results of Operations" in Part II, Item 7 of the '
+        "Company's Annual Report on Form 10-K for the fiscal year ended September 24, 2022. "
+        "Fiscal Period The Company's fiscal year is the 52- or 53-week period that ends on the "
+        "last Saturday of September. An additional week is included in the first fiscal quarter "
+        "every five or six years to realign the Company's fiscal quarters with calendar quarters, "
+        "which occurred in the first quarter of 2023. The Company's fiscal year 2023 spanned 53 "
+        "weeks, whereas fiscal years 2022 and 2021 spanned 52 weeks each. Fiscal Year Highlights "
+        "The Company's total net sales were $383.3 billion and net income was $97.0 billion "
+        "during 2023. The Company's total net sales decreased 3% or $11.0 billion during 2023 "
+        "compared to 2022. The weakness in foreign currencies relative to the U.S. dollar "
+        "accounted for more than the entire year-over-year decrease in total net sales, which "
+        "consisted primarily of lower net sales of Mac and iPhone, partially offset by higher net "
+        "sales of Services. The Company announces new product, service and software offerings at "
+        "various times during the year. Significant announcements during fiscal year 2023 "
+        "included the following: First Quarter 2023: iPad and iPad Pro; Next-generation Apple TV "
+        "4K; and MLS Season Pass, a Major League Soccer subscription streaming service. Second "
+        'Quarter 2023: MacBook Pro 14", MacBook Pro 16" and Mac mini; and Second-generation '
+        'HomePod. Third Quarter 2023: MacBook Air 15", Mac Studio and Mac Pro; Apple Vision Pro™, '
+        "the Company's first spatial computer featuring its new visionOS™, expected to be "
+        "available in early calendar year 2024; and iOS 17, macOS Sonoma, iPadOS 17, tvOS 17 and "
+        "watchOS 10, updates to the Company's operating systems. Fourth Quarter 2023: iPhone 15, "
+        "iPhone 15 Plus, iPhone 15 Pro and iPhone 15 Pro Max; and Apple Watch Series 9 and Apple "
+        "Watch Ultra 2. In May 2023, the Company announced a new share repurchase program of up "
+        "to $90 billion and raised its quarterly dividend from $0.23 to $0.24 per share beginning "
+        "in May 2023. During 2023, the Company repurchased $76.6 billion of its common stock and "
+        "paid dividends and dividend equivalents of $15.0 billion. Macroeconomic Conditions "
+        "Macroeconomic conditions, including inflation, changes in interest rates, and currency "
+        "fluctuations, have directly and indirectly impacted, and could in the future materially "
+        "impact, the Company's results of operations and financial condition. Apple Inc. | 2023 "
+        "Form 10-K | 20 Segment Operating Performance The following table shows net sales by "
+        "reportable segment for 2023, 2022 and 2021 (dollars in millions): 2023 Change 2022 "
+        "Change 2021 Net sales by reportable segment: Americas $ 162,560 (4) % $ 169,658 11 % $ "
+        "153,306 Europe 94,294 (1) % 95,118 7 % 89,307 Greater China 72,559 (2) % 74,200 9 % "
+        "68,366 Japan 24,257 (7) % 25,977 (9) % 28,482 Rest of Asia Pacific 29,615 1 % 29,375 11 "
+        "% 26,356 Total net sales $ 383,285 (3) % $ 394,328 8 % $ 365,817 Americas Americas net "
+        "sales decreased 4% or $7.1 billion during 2023 compared to 2022 due to lower net sales "
+        "of iPhone and Mac, partially offset by higher net sales of Services. Europe Europe net "
+        "sales decreased 1% or $824 million during 2023 compared to 2022. The weakness in foreign "
+        "currencies relative to the U.S. dollar accounted for more than the entire year-over-year "
+        "decrease in Europe net sales, which consisted primarily of lower net sales of Mac and "
+        "Wearables, Home and Accessories, partially offset by higher net sales of iPhone and "
+        "Services. Greater China Greater China net sales decreased 2% or $1.6 billion during 2023 "
+        "compared to 2022. The weakness in the renminbi relative to the U.S. dollar accounted for "
+        "more than the entire year-over-year decrease in Greater China net sales, which consisted "
+        "primarily of lower net sales of Mac and iPhone. Japan Japan net sales decreased 7% or "
+        "$1.7 billion during 2023 compared to 2022. The weakness in the yen relative to the U.S. "
+        "dollar accounted for more than the entire year-over-year decrease in Japan net sales, "
+        "which consisted primarily of lower net sales of iPhone, Wearables, Home and Accessories "
+        "and Mac. Rest of Asia Pacific Rest of Asia Pacific net sales increased 1% or $240 "
+        "million during 2023 compared to 2022. The weakness in foreign currencies relative to the "
+        "U.S. dollar had a significantly unfavorable year-over-year impact on Rest of Asia "
+        "Pacific net sales. The net sales increase consisted of higher net sales of iPhone and "
+        "Services, partially offset by lower net sales of Mac and iPad. Apple Inc. | 2023 Form "
+        "10-K | 21 Products and Services Performance The following table shows net sales by "
+        "category for 2023, 2022 and 2021 (dollars in millions): 2023 Change 2022 Change 2021 Net "
+        "sales by category: iPhone (1) $ 200,583 (2) % $ 205,489 7 % $ 191,973 Mac (1) 29,357 "
+        "(27) % 40,177 14 % 35,190 iPad (1) 28,300 (3) % 29,292 (8) % 31,862 Wearables, Home and "
+        "Accessories (1) 39,845 (3) % 41,241 7 % 38,367 Services (2) 85,200 9 % 78,129 14 % "
+        "68,425 Total net sales $ 383,285 (3) % $ 394,328 8 % $ 365,817 (1) Products net sales "
+        "include amortization of the deferred value of unspecified software upgrade rights, which "
+        "are bundled in the sales price of the respective product. (2) Services net sales include "
+        "amortization of the deferred value of services bundled in the sales price of certain "
+        "products. iPhone iPhone net sales decreased 2% or $4.9 billion during 2023 compared to "
+        "2022 due to lower net sales of non-Pro iPhone models, partially offset by higher net "
+        "sales of Pro iPhone models. Mac Mac net sales decreased 27% or $10.8 billion during 2023 "
+        "compared to 2022 due primarily to lower net sales of laptops. iPad iPad net sales "
+        "decreased 3% or $1.0 billion during 2023 compared to 2022 due primarily to lower net "
+        "sales of iPad mini and iPad Air, partially offset by the combined net sales of iPad 9th "
+        "and 10th generation. Wearables, Home and Accessories Wearables, Home and Accessories net "
+        "sales decreased 3% or $1.4 billion during 2023 compared to 2022 due primarily to lower "
+        "net sales of Wearables and Accessories. Services Services net sales increased 9% or $7.1 "
+        "billion during 2023 compared to 2022 due to higher net sales across all lines of "
+        "business. Apple Inc."
+    ),
+)
+
+_MSFT = CachedFiling(
+    ticker="MSFT",
+    cik="0000789019",
+    accession_no="0000950170-23-035122",
+    acceptance_datetime=datetime(2023, 7, 27, 20, 1, 56, tzinfo=UTC),
+    period_of_report="2023-06-30",
+    risk_factors=(
+        "Item 1A. Risk Factors Our operations and financial results are subject to various risks "
+        "and uncertainties, including those described below, that could adversely affect our "
+        "business, financial condition, results of operations, cash flows, and the trading price "
+        "of our common stock. STRATEGIC AND COMPETITIVE RISKS We face intense competition across "
+        "all markets for our products and services, which may lead to lower revenue or operating "
+        "margins. Competition in the technology sector Our competitors range in size from "
+        "diversified global companies with significant research and development resources to "
+        "small, specialized firms whose narrower product lines may let them be more effective in "
+        "deploying technical, marketing, and financial resources. Barriers to entry in many of "
+        "our businesses are low and many of the areas in which we compete evolve rapidly with "
+        "changing and disruptive technologies, shifting user needs, and frequent introductions of "
+        "new products and services. Our ability to remain competitive depends on our success in "
+        "making innovative products, devices, and services that appeal to businesses and "
+        "consumers. Competition among platform-based ecosystems An important element of our "
+        "business model has been to create platform-based ecosystems on which many participants "
+        "can build diverse solutions. A well-established ecosystem creates beneficial network "
+        "effects among users, application developers, and the platform provider that can "
+        "accelerate growth. Establishing significant scale in the marketplace is necessary to "
+        "achieve and maintain attractive margins. We face significant competition from firms that "
+        "provide competing platforms. A competing vertically-integrated model, in which a single "
+        "firm controls the software and hardware elements of a product and related services, has "
+        "succeeded with some consumer products such as personal computers, tablets, phones, "
+        "gaming consoles, wearables, and other endpoint devices. Competitors pursuing this model "
+        "also earn revenue from services integrated with the hardware and software platform, "
+        "including applications and content sold through their integrated marketplaces. They may "
+        "also be able to claim security and performance benefits from their vertically integrated "
+        "offer. We also offer some vertically-integrated hardware and software products and "
+        "services. To the extent we shift a portion of our business to a vertically integrated "
+        "model we increase our cost of revenue and reduce our operating margins. We derive "
+        "substantial revenue from licenses of Windows operating systems on PCs. We face "
+        "significant competition from competing platforms developed for new devices and form "
+        "factors such as smartphones and tablet computers. These devices compete on multiple "
+        "bases including price and the perceived utility of the device and its platform. Users "
+        "are increasingly turning to these devices to perform functions that in the past were "
+        "performed by personal computers. Even if many users view these devices as complementary "
+        "to a personal computer, the prevalence of these devices may make it more difficult to "
+        "attract application developers to our PC operating system platforms. Competing with "
+        "operating systems licensed at low or no cost may decrease our PC operating system "
+        "margins. Popular products or services offered on competing platforms could increase "
+        "their competitive strength. In addition, some of our devices compete with products made "
+        'by our original equipment manufacturer ("OEM") partners, which may affect their '
+        "commitment to our platform. Competing platforms have content and application "
+        "marketplaces with scale and significant installed bases. The variety and utility of "
+        "content and applications available on a platform are important to device purchasing "
+        "decisions. Users may incur costs to move data and buy new content and applications when "
+        "switching platforms. To compete, we must successfully enlist developers to write "
+        "applications for our platform and ensure that these applications have high quality, "
+        "security, customer appeal, and value. Efforts to compete with competitors' content and "
+        "application marketplaces may increase our cost of revenue and lower our operating "
+        "margins. Competitors' rules governing their content and applications marketplaces may "
+        "restrict our ability to distribute products and services through them in accordance with "
+        "our technical and business model objectives. 23 PART I Item 1A Business model "
+        "competition Companies compete with us based on a growing variety of business models. "
+        "Even as we transition more of our business to infrastructure-, platform-, and "
+        "software-as-a-service business model, the license-based proprietary software model "
+        "generates a substantial portion of our software revenue. We bear the costs of converting "
+        "original ideas into software products through investments in research and development, "
+        "offsetting these costs with the revenue received from licensing our products. Many of "
+        "our competitors also develop and sell software to businesses and consumers under this "
+        'model. We are investing in artificial intelligence ("AI") across the entire company and '
+        "infusing generative AI capabilities into our consumer and commercial offerings. We "
+        "expect AI technology and services to be a highly competitive and rapidly evolving "
+        "market. We will bear significant development and operational costs to build and support "
+        "the AI capabilities, products, and services necessary to meet the needs of our "
+        "customers. To compete effectively we must also be responsive to technological change, "
+        "potential regulatory developments, and public scrutiny. Other competitors develop and "
+        "offer free applications, online services, and content, and make money by selling "
+        "third-party advertising. Advertising revenue funds development of products and services "
+        "these competitors provide to users at no or little cost, competing directly with our "
+        "revenue-generating products. Some companies compete with us by modifying and then "
+        "distributing open source software at little or no cost to end users, using open source "
+        "AI models, and earning revenue on advertising or integrated products and services. These "
+        "firms do not bear the full costs of research and development for the open source "
+        "products. Some open source products mimic the features and functionality of our "
+        "products. The competitive pressures described above may cause decreased sales volumes, "
+        "price reductions, and/or increased operating costs, such as for research and "
+        "development, marketing, and sales incentives. This may lead to lower revenue, gross "
+        "margins, and operating income. Our increasing focus on cloud-based services presents "
+        "execution and competitive risks. A growing part of our business involves cloud-based "
+        "services available across the spectrum of computing devices. Our strategic vision is to "
+        "compete and grow by building best-in-class platforms and productivity services that "
+        "utilize ubiquitous computing and ambient intelligence to drive insights and productivity "
+        "gains. At the same time, our competitors are rapidly developing and deploying "
+        "cloud-based services for consumers and business customers. Pricing and delivery models "
+        "are evolving. Devices and form factors influence how users access services in the cloud "
+        "and sometimes the user's choice of which cloud-based services to use. Certain industries "
+        "and customers have specific requirements for cloud services and may present enhanced "
+        "risks. We are devoting significant resources to develop and deploy our cloud-based "
+        "strategies. The Windows ecosystem must continue to evolve with this changing "
+        "environment. We embrace cultural and organizational changes to drive accountability and "
+        "eliminate obstacles to innovation. Our intelligent cloud and intelligent edge offerings "
+        'are connected to the growth of the Internet of Things ("IoT"), a network of distributed '
+        "and interconnected devices employing sensors, data, and computing capabilities, "
+        "including AI. Our success in driving ubiquitous computing and ambient intelligence will "
+        "depend on the level of adoption of our offerings such as Azure, Azure AI, and Azure IoT "
+        "Edge. We may not establish market share sufficient to achieve scale necessary to meet "
+        "our business objectives. Besides software development costs, we are incurring costs to "
+        "build and maintain infrastructure to support cloud computing services. These costs will "
+        "reduce the operating margins we have previously achieved. Whether we succeed in "
+        "cloud-based services depends on our execution in several areas, including: Continuing to "
+        "bring to market compelling cloud-based experiences that generate increasing traffic and "
+        "market share. Maintaining the utility, compatibility, and performance of our cloud-based "
+        "services on the growing array of computing devices, including PCs, smartphones, tablets, "
+        "gaming consoles, and other devices, as well as sensors and other IoT endpoints. "
+        "Continuing to enhance the attractiveness of our cloud platforms to third-party "
+        "developers. Ensuring our cloud-based services meet the reliability expectations of our "
+        "customers and maintain the security of their data as well as help them meet their own "
+        "compliance needs. Making our suite of cloud-based services platform-agnostic, available "
+        "on a wide range of devices and ecosystems, including those of our competitors. 24 PART I "
+        "Item 1A It is uncertain whether our strategies will attract the users or generate the "
+        "revenue required to succeed. If we are not effective in executing organizational and "
+        "technical changes to increase efficiency and accelerate innovation, or if we fail to "
+        "generate sufficient usage of our new products and services, we may not grow revenue in "
+        "line with the infrastructure and development investments described above. This may "
+        "negatively impact gross margins and operating income. Some users may engage in "
+        "fraudulent or abusive activities through our cloud-based services. These include "
+        "unauthorized use of accounts through stolen credentials, use of stolen credit cards or "
+        "other payment vehicles, failure to pay for services accessed, or other activities that "
+        "violate our terms of service such as cryptocurrency mining or launching cyberattacks. If "
+        "our efforts to detect such violations or our actions to control these types of fraud and "
+        "abuse are not effective, we may experience adverse impacts to our revenue or incur "
+        "reputational damage. RISKS RELATING TO THE EVOLUTION OF OUR BUSINESS We make significant "
+        "investments in products and services that may not achieve expected returns. We will "
+        "continue to make significant investments in research, development, and marketing for "
+        "existing products, services, and technologies, including the Windows operating system, "
+        "Microsoft 365, Bing, SQL Server, Windows Server, Azure, Office 365, Xbox, LinkedIn, and "
+        "other products and services. In addition, we are focused on developing new AI platform "
+        "services and incorporating AI into existing products and services. We also invest in the "
+        "development and acquisition of a variety of hardware for productivity, communication, "
+        "and entertainment, including PCs, tablets, gaming devices, and HoloLens. Investments in "
+        "new technology are speculative. Commercial success depends on many factors, including "
+        "innovativeness, developer support, and effective distribution and marketing. If "
+        "customers do not perceive our latest offerings as providing significant new "
+        "functionality or other value, they may reduce their purchases of new software and "
+        "hardware products or upgrades, unfavorably affecting revenue. We may not achieve "
+        "significant revenue from new product, service, and distribution channel investments for "
+        "several years, if at all. New products and services may not be profitable, and even if "
+        "they are profitable, operating margins for some new products and businesses will not be "
+        "as high as the margins we have experienced historically. We may not get engagement in "
+        "certain features, like Microsoft Edge, Bing, and Bing Chat, that drive post-sale "
+        "monetization opportunities. Our data handling practices across our products and services "
+        "will continue to be under scrutiny. Perceptions of mismanagement, driven by regulatory "
+        "activity or negative public reaction to our practices or product experiences, could "
+        "negatively impact product and feature adoption, product design, and product quality. "
+        "Developing new technologies is complex. It can require long development and testing "
+        "periods. Significant delays in new releases or significant problems in creating new "
+        "products or services could adversely affect our revenue. Acquisitions, joint ventures, "
+        "and strategic alliances may have an adverse effect on our business. We expect to "
+        "continue making acquisitions and entering into joint ventures and strategic alliances as "
+        "part of our long-term business strategy. For example, in March 2021 we completed our "
+        "acquisition of ZeniMax Media Inc. for $8.1 billion, and in March 2022 we completed our "
+        "acquisition of Nuance Communications, Inc. for $18.8 billion. In January 2022 we "
+        "announced a definitive agreement to acquire Activision Blizzard , Inc. for $68.7 "
+        "billion. In January 2023 we announced the third phase of our OpenAI strategic "
+        "partnership. Acquisitions and other transactions and arrangements involve significant "
+        "challenges and risks, including that they do not advance our business strategy, that we "
+        "get an unsatisfactory return on our investment, that they raise new compliance-related "
+        "obligations and challenges, that we have difficulty integrating and retaining new "
+        "employees, business systems, and technology, that they distract management from our "
+        "other businesses, or that announced transactions may not be completed. If an arrangement "
+        "fails to adequately anticipate changing circumstances and interests of a party, it may "
+        "result in early termination or renegotiation of the arrangement. The success of these "
+        "transactions and arrangements will depend in part on our ability to leverage them to "
+        "enhance our existing products and services or develop compelling new ones, as well as "
+        "acquired companies' ability to meet our policies and processes in areas such as data "
+        "governance, privacy, and cybersecurity. It may take longer than expected to realize the "
+        "full benefits from these transactions and arrangements such as increased revenue or "
+        "enhanced efficiencies, or the benefits may ultimately be smaller than we expected. These "
+        "events could adversely affect our consolidated financial statements. 25 PART I Item 1A "
+        "If our goodwill or amortizable intangible assets become impaired, we may be required to "
+        "record a significant charge to earnings. We acquire other companies and intangible "
+        "assets and may not realize all the economic benefit from those acquisitions, which could "
+        "cause an impairment of goodwill or intangibles. We review our amortizable intangible "
+        "assets for impairment when events or changes in circumstances indicate the carrying "
+        "value may not be recoverable. We test goodwill for impairment at least annually. Factors "
+        "that may be a change in circumstances, indicating that the carrying value of our "
+        "goodwill or amortizable intangible assets may not be recoverable, include a decline in "
+        "our stock price and market capitalization, reduced future cash flow estimates, and "
+        "slower growth rates in industry segments in which we participate. We have in the past "
+        "recorded, and may in the future be required to record, a significant charge in our "
+        "consolidated financial statements during the period in which any impairment of our "
+        "goodwill or amortizable intangible assets is determined, negatively affecting our "
+        "results of operations. CYBERSECURITY, DATA PRIVACY, AND PLATFORM ABUSE RISKS "
+        "Cyberattacks and security vulnerabilities could lead to reduced revenue, increased "
+        "costs, liability claims, or harm to our reputation or competitive position. Security of "
+        "our information technology Threats to IT security can take a variety of forms. "
+        "Individual and groups of hackers and sophisticated organizations, including "
+        "state-sponsored organizations or nation-states, continuously undertake attacks that pose "
+        "threats to our customers and our IT. These actors may use a wide variety of methods, "
+        "which may include developing and deploying malicious software or exploiting "
+        "vulnerabilities or intentionally designed processes in hardware, software, or other "
+        "infrastructure in order to attack our products and services or gain access to our "
+        "networks and datacenters, using social engineering techniques to induce our employees, "
+        "users, partners, or customers to disclose passwords or other sensitive information or "
+        "take other actions to gain access to our data or our users' or customers' data, or "
+        "acting in a coordinated manner to launch distributed denial of service or other "
+        "coordinated attacks. Nation-state and state-sponsored actors can deploy significant "
+        "resources to plan and carry out attacks. Nation-state attacks against us, our customers, "
+        "or our partners may intensify during periods of intense diplomatic or armed conflict, "
+        "such as the ongoing conflict in Ukraine. Inadequate account security or organizational "
+        "security practices may also result in unauthorized access to confidential data. For "
+        "example, system administrators may fail to timely remove employee account access when no "
+        "longer appropriate. Employees or third parties may intentionally compromise our or our "
+        "users' security or systems or reveal confidential information. Malicious actors may "
+        "employ the IT supply chain to introduce malware through software updates or compromised "
+        "supplier accounts or hardware. Cyberthreats are constantly evolving and becoming "
+        "increasingly sophisticated and complex, increasing the difficulty of detecting and "
+        "successfully defending against them."
+    ),
+    mda=(
+        "Item 7. Management's Discussion and Analysis of Financial Condition and Results of "
+        "Operations. The following Management's Discussion and Analysis of Financial Condition "
+        'and Results of Operations ("MD&A") is intended to help the reader understand the results '
+        "of operations and financial condition of Microsoft Corporation. MD&A is provided as a "
+        "supplement to, and should be read in conjunction with, our consolidated financial "
+        "statements and the accompanying Notes to Financial Statements (Part II, Item 8 of this "
+        "Form 10-K). This section generally discusses the results of our operations for the year "
+        "ended June 30, 2023 compared to the year ended June 30, 2022. For a discussion of the "
+        "year ended June 30 , 2022 compared to the year ended June 30, 2021, please refer to Part "
+        "II, Item 7, \"Management's Discussion and Analysis of Financial Condition and Results of "
+        'Operations" in our Annual Report on Form 10-K for the year ended June 30, 2022. OVERVIEW '
+        "Microsoft is a technology company whose mission is to empower every person and every "
+        "organization on the planet to achieve more. We strive to create local opportunity, "
+        "growth, and impact in every country around the world. We are creating the platforms and "
+        'tools, powered by artificial intelligence ("AI"), that deliver better, faster, and more '
+        "effective solutions to support small and large business competitiveness, improve "
+        "educational and health outcomes, grow public-sector efficiency, and empower human "
+        "ingenuity. We generate revenue by offering a wide range of cloud-based solutions, "
+        "content, and other services to people and businesses; licensing and supporting an array "
+        "of software products; delivering relevant online advertising to a global audience; and "
+        "designing and selling devices. Our most significant expenses are related to compensating "
+        "employees; supporting and investing in our cloud-based services, including datacenter "
+        "operations; designing, manufacturing, marketing, and selling our other products and "
+        "services; and income taxes. Highlights from fiscal year 2023 compared with fiscal year "
+        "2022 included: Microsoft Cloud revenue increased 22% to $111.6 billion. Office "
+        "Commercial products and cloud services revenue increased 10% driven by Office 365 "
+        "Commercial growth of 13%. Office Consumer products and cloud services revenue increased "
+        "2% and Microsoft 365 Consumer subscribers increased to 67.0 million. LinkedIn revenue "
+        "increased 10%. Dynamics products and cloud services revenue increased 16% driven by "
+        "Dynamics 365 growth of 24%. Server products and cloud services revenue increased 19% "
+        "driven by Azure and other cloud services growth of 29%. Windows original equipment "
+        'manufacturer licensing ("Windows OEM") revenue decreased 25%. Devices revenue decreased '
+        "24%. Windows Commercial products and cloud services revenue increased 5%. Xbox content "
+        "and services revenue decreased 3%. Search and news advertising revenue excluding traffic "
+        "acquisition costs increased 11%. Industry Trends Our industry is dynamic and highly "
+        "competitive, with frequent changes in both technologies and business models. Each "
+        "industry shift is an opportunity to conceive new products, new technologies, or new "
+        "ideas that can further transform the industry and our business. At Microsoft, we push "
+        "the boundaries of what is possible through a broad range of research and development "
+        "activities that seek to identify and address the changing demands of customers and "
+        "users, industry trends, and competitive forces. 40 PART II Item 7 Economic Conditions, "
+        "Challenges, and Risks The markets for software, devices, and cloud-based services are "
+        "dynamic and highly competitive. Our competitors are developing new software and devices, "
+        "while also deploying competing cloud-based services for consumers and businesses. The "
+        "devices and form factors customers prefer evolve rapidly, influencing how users access "
+        "services in the cloud and, in some cases, the user's choice of which suite of "
+        "cloud-based services to use. Aggregate demand for our software, services, and devices is "
+        "also correlated to global macroeconomic and geopolitical factors, which remain dynamic. "
+        "We must continue to evolve and adapt over an extended time in pace with this changing "
+        "environment. The investments we are making in cloud and AI infrastructure and devices "
+        "will continue to increase our operating costs and may decrease our operating margins. We "
+        "continue to identify and evaluate opportunities to expand our datacenter locations and "
+        "increase our server capacity to meet the evolving needs of our customers, particularly "
+        "given the growing demand for AI services. Our datacenters depend on the availability of "
+        "permitted and buildable land, predictable energy, networking supplies, and servers, "
+        'including graphics processing units ("GPUs") and other components. Our devices are '
+        "primarily manufactured by third-party contract manufacturers. For the majority of our "
+        "products, we have the ability to use other manufacturers if a current vendor becomes "
+        "unavailable or unable to meet our requirements. However, some of our products contain "
+        "certain components for which there are very few qualified suppliers. Extended "
+        "disruptions at these suppliers could impact our ability to manufacture devices on time "
+        "to meet consumer demand. Our success is highly dependent on our ability to attract and "
+        "retain qualified employees. We hire a mix of university and industry talent worldwide. "
+        "We compete for talented individuals globally by offering an exceptional working "
+        "environment, broad customer reach, scale in resources, the ability to grow one's career "
+        "across many different products and businesses, and competitive compensation and "
+        "benefits. Our international operations provide a significant portion of our total "
+        "revenue and expenses. Many of these revenue and expenses are denominated in currencies "
+        "other than the U.S. dollar. As a result, changes in foreign exchange rates may "
+        "significantly affect revenue and expenses. Fluctuations in the U.S. dollar relative to "
+        "certain foreign currencies reduced reported revenue and expenses from our international "
+        "operations in fiscal year 2023. On January 18, 2023, we announced decisions we made to "
+        "align our cost structure with our revenue and customer demand, prioritize our "
+        "investments in strategic areas, and consolidate office space. As a result, we recorded a "
+        '$1.2 billion charge in the second quarter of fiscal year 2023 ("Q2 charge"), which '
+        "included employee severance expenses of $800 million, impairment charges resulting from "
+        "changes to our hardware portfolio, and costs related to lease consolidation activities. "
+        "First, we reduced our overall workforce by approximately 10,000 jobs through the third "
+        "quarter of fiscal year 2023 related to the Q2 charge, which represents less than 5% of "
+        "our total employee base. While we eliminated roles in some areas, we will continue to "
+        "hire in key strategic areas. Second, we are allocating both our capital and talent to "
+        "areas of secular growth and long-term competitiveness, while divesting in other areas. "
+        "Third, we are consolidating our leases to create higher density across our workspaces, "
+        "which impacted our financial results through the remainder of fiscal year 2023, and we "
+        "may make similar decisions in future periods as we continue to evaluate our real estate "
+        "needs. Refer to Risk Factors (Part I, Item 1A of this Form 10-K) for a discussion of "
+        "these factors and other risks. Seasonality Our revenue fluctuates quarterly and is "
+        "generally higher in the second and fourth quarters of our fiscal year. Second quarter "
+        "revenue is driven by corporate year-end spending trends in our major markets and holiday "
+        "season spending by consumers, and fourth quarter revenue is driven by the volume of "
+        "multi-year on-premises contracts executed during the period. Change in Accounting "
+        "Estimate In July 2022, we completed an assessment of the useful lives of our server and "
+        "network equipment. Due to investments in software that increased efficiencies in how we "
+        "operate our server and network equipment, as well as advances in technology, we "
+        "determined we should increase the estimated useful lives of both server and network "
+        "equipment from four years to six years. This change in accounting estimate was effective "
+        "beginning fiscal year 2023. Based on the carrying amount of server and network equipment "
+        "included in property and equipment, net as of June 30, 2022, the effect of this change "
+        "in estimate for fiscal year 2023 was an increase in operating income of $3.7 billion and "
+        "net income of $3.0 billion, or $0.40 per both basic and diluted share. 41 PART II Item 7 "
+        "Reportable Segments We report our financial performance based on the following segments: "
+        "Productivity and Business Processes, Intelligent Cloud, and More Personal Computing. The "
+        "segment amounts included in MD&A are presented on a basis consistent with our internal "
+        "management reporting. We have recast certain prior period amounts to conform to the way "
+        "we internally manage and monitor our business. Additional information on our reportable "
+        "segments is contained in Note 19 - Segment Information and Geographic Data of the Notes "
+        "to Financial Statements (Part II, Item 8 of this Form 10-K). Metrics We use metrics in "
+        "assessing the performance of our business and to make informed decisions regarding the "
+        "allocation of resources. We disclose metrics to enable investors to evaluate progress "
+        "against our ambitions, provide transparency into performance trends, and reflect the "
+        "continued evolution of our products and services. Our commercial and other business "
+        "metrics are fundamentally connected based on how customers use our products and "
+        "services."
+    ),
+)
+
+_NVDA = CachedFiling(
+    ticker="NVDA",
+    cik="0001045810",
+    accession_no="0001045810-23-000017",
+    acceptance_datetime=datetime(2023, 2, 24, 22, 23, 43, tzinfo=UTC),
+    period_of_report="2023-01-29",
+    risk_factors=(
+        "Item 1A. Risk Factors In evaluating NVIDIA, the following risk factors should be "
+        "considered in addition to the other information in this Annual Report on Form 10-K. "
+        "Purchasing or owning NVIDIA common stock involves investment risks including, but not "
+        "limited to, the risks described below. Any one of the following risks could harm our "
+        "business, financial condition, results of operations or reputation, which could cause "
+        "our stock price to decline, and you may lose all or a part of your investment. "
+        "Additional risks, trends and uncertainties not presently known to us or that we "
+        "currently believe are immaterial may also harm our business, financial condition, "
+        "results of operations or reputation. Risk Factors Summary Risks Related to Our Industry "
+        "and Markets Failure to meet the evolving needs of our industry and markets may adversely "
+        "impact our financial results. 15 Table of Contents Competition in our current and target "
+        "markets could cause us to lose market share and revenue. Risks Related to Demand, Supply "
+        "and Manufacturing Failure to estimate customer demand properly has led and could lead to "
+        "mismatches between supply and demand. Dependency on third-party suppliers and their "
+        "technology reduces our control over product quantity and quality, manufacturing yields, "
+        "development, enhancement, and product delivery schedules and could harm our business. "
+        "Defects in our products have caused and could cause us to incur significant expenses to "
+        "remediate and can damage our business. Risks Related to Our Global Operating Business "
+        "Adverse economic conditions may harm our business. International operations are a "
+        "significant part of our business, and economic, political, business, and other changes "
+        "in the regions in which we operate may expose us to risks that could harm our business. "
+        "Product, system security, and data breaches and cyber-attacks could disrupt our "
+        "operations and adversely affect our financial condition, stock price and reputation. "
+        "Business disruptions could harm our operations and financial results. Climate change may "
+        "have a long-term impact on our business. We may not be able to realize the potential "
+        "benefits of business investments or acquisitions, nor successfully integrate acquisition "
+        "targets. A significant amount of our revenue stems from a limited number of customers "
+        "and could be adversely affected if we lose or are prevented from selling to any of these "
+        "customers. We may be unable to attract, retain and motivate our executives and key "
+        "employees. Modification or interruption of our business processes and information "
+        "systems may disrupt our business, processes and internal controls. The COVID-19 pandemic "
+        "has affected and could continue to have a material adverse impact on our financial "
+        "condition and results of operations. Our operating results have in the past fluctuated "
+        "and may in the future fluctuate, and if our operating results are below the expectations "
+        "of securities analysts or investors, our stock price could decline. Risks Related to "
+        "Regulatory, Legal, Our Stock and Other Matters We are subject to complex laws, rules and "
+        "regulations, and political and other actions, which may adversely impact our business. "
+        "Increased scrutiny from shareholders, regulators, and others regarding our "
+        "environmental, social and governance responsibilities could result in financial, "
+        "reputational and operational harm. Issues relating to the responsible use of our "
+        "technologies, including AI, may result in reputational and financial harm and liability. "
+        "Adequately protecting our IP rights could be costly, and our ability to compete could be "
+        "harmed if we are unsuccessful or if we are prohibited from making or selling our "
+        "products. We are subject to stringent and changing data privacy and security laws, "
+        "rules, regulations, and other obligations. Privacy or security concerns relating to our "
+        "products and services could damage our reputation, deter customers, or result in legal "
+        "or regulatory proceedings and liability. 16 Table of Contents Our operating results may "
+        "be adversely impacted by additional tax liabilities, higher than expected tax rates and "
+        "other tax-related factors. Our business is exposed to the risks associated with "
+        "litigation, investigations and regulatory proceedings. Our indebtedness could adversely "
+        "affect our financial position and cash flows from operations and prevent us from "
+        "implementing our strategy or fulfilling our contractual obligations. Delaware law, "
+        "provisions in our governing documents, and our agreement with Microsoft could delay or "
+        "prevent a change in control. Risk Factors Risks Related to Our Industry and Markets "
+        "Failure to meet the evolving needs of our industry and markets may adversely impact our "
+        "financial results. Our accelerated computing platforms experience rapid changes in "
+        "technology, customer requirements, competitive products, and industry standards. Our "
+        "success depends on our ability to: timely identify industry changes, adapt our "
+        "strategies, and develop new or enhance existing products and technologies that meet the "
+        "evolving needs of these markets, including due to unexpected changes in industry "
+        "standards or disruptive technological innovation that could render our products "
+        "incompatible with products developed by other companies; develop new products and "
+        "technologies through investments in research and development; launch new offerings with "
+        "new business models including standalone software, cloud solutions, and software-, "
+        "infrastructure-, or platform-as-a-service solutions; expand the ecosystem for our "
+        "products and technologies; meet evolving and prevailing customer and industry safety and "
+        "compliance standards; manage product and software lifecycles to maintain customer and "
+        "end user satisfaction; develop, acquire, and maintain the internal and external "
+        "infrastructure needed to scale our business, including our acquisitions integrations, "
+        "customer support, e-commerce, IP licensing capabilities and cloud service capacity; and "
+        "complete technical, financial, compliance, sales and marketing investments for some of "
+        "the above activities. We invest in research and development in markets where we have a "
+        "limited operating history, which may not produce meaningful revenue for several years, "
+        "if at all. If we fail to develop or monetize new products and technologies, or if they "
+        "do not become widely adopted, our financial results could be adversely affected. "
+        "Obtaining design wins may involve a lengthy process and depend on our ability to "
+        "anticipate and provide features and functionality that customers will demand. They also "
+        "do not guarantee revenue. Failure to obtain a design win may prevent us from obtaining "
+        "future design wins in subsequent generations. We cannot ensure that the products and "
+        "technologies we bring to market will provide value to our customers and partners. If we "
+        "fail any of these key success criteria, our financial results may be harmed. We will "
+        "offer enterprise customers NVIDIA AI cloud services directly and through our network of "
+        "partners. Examples of these services include NVIDIA DGX Cloud, which is cloud-based "
+        "infrastructure and software for training AI models, and customizable pretrained AI "
+        "models. NVIDIA has partnered with leading cloud service providers to host these services "
+        "in their data centers, and we entered into multi-year cloud service agreements in the "
+        "second half of fiscal year 2023 to support these offerings and our research and "
+        "development activities. NVIDIA AI cloud services may not be successful and will take "
+        "time, resources and investment. We also offer or plan to offer standalone software "
+        "solutions for AI including NVIDIA AI Enterprise, NVIDIA Omniverse, NVIDIA DRIVE for "
+        "automotive, and several other software solutions. These new 17 Table of Contents "
+        "business models or strategies may not be successful and we may fail to sell any "
+        "meaningful standalone software or as-a-service solutions. We may incur significant costs "
+        "and may not achieve any significant revenue from these offerings. Competition in our "
+        "current and target markets could cause us to lose market share and revenue. Our target "
+        "markets remain competitive, and competition may intensify with expanding and changing "
+        "product and service offerings, industry standards, customer needs, new entrants and "
+        "consolidations. Our competitors' products, services and technologies, including those "
+        "mentioned above in this Annual Report on Form 10-K, may be cheaper or provide better "
+        "functionality or features than ours, which has resulted and may in the future result in "
+        "lower than expected selling prices for our products. Some of our competitors operate "
+        "their own fabrication facilities, have longer operating histories, larger customer "
+        "bases, more comprehensive IP portfolios and patent protections, new designs and more "
+        "design wins, and greater financial, sales, marketing and distribution resources than we "
+        "do. These competitors may be able to acquire market share and/or prevent us from doing "
+        "so, more effectively identify and capitalize upon opportunities in new markets and end "
+        "user customer trends, more quickly transition their products, and secure sufficient "
+        "foundry capacity and packaging materials during a supply-constrained environment, which "
+        "could harm our business. Some of our customers have in-house expertise and internal "
+        "development capabilities similar to some of ours and can use or develop their own "
+        "solutions to replace those we are providing. For example, others may offer cloud-based "
+        "services that compete with our AI cloud service offerings, and we may not be able to "
+        "establish market share sufficient to achieve scale necessary to meet our business "
+        "objectives. If we are unable to successfully compete in this environment, demand for our "
+        "products, services and technologies could decrease, which would cause our revenue to "
+        "decline. Risks Related to Demand, Supply and Manufacturing Failure to estimate customer "
+        "demand properly has led and could lead to mismatches between supply and demand. We use "
+        "third parties to manufacture and assemble our products, and we have had and may in the "
+        "future have long manufacturing lead times. We are not provided guaranteed wafer, "
+        "component and capacity supply, and our supply deliveries and production may be "
+        "non-linear within a quarter or year. If our estimates of customer demand are ultimately "
+        "inaccurate, as we have experienced from time to time, there could be a significant "
+        "mismatch between supply and demand. This mismatch has resulted in both product shortages "
+        "and excess inventory, has varied across our market platforms, and has significantly "
+        "harmed our financial results. We build finished products and maintain inventory in "
+        "advance of anticipated demand. While we have in the past entered and may in the future "
+        "enter into long-term supply and capacity commitments, we may not be able to secure "
+        "sufficient commitments for capacity to address our business needs or our long-term "
+        "demand expectations may change. Additionally, our ability to sell certain products has "
+        "been and could be impeded if components from third parties that are necessary for the "
+        "finished product are not available. In periods of shortages impacting the semiconductor "
+        "industry and/or limited supply or capacity in our supply chain, the lead times on our "
+        "orders may be extended. We have previously experienced extended lead times of more than "
+        "12 months. We have paid premiums and provided deposits to secure future supply and "
+        "capacity, which have increased our product costs and may continue to do so. We may not "
+        "have the ability to reduce our supply commitments at the same rate or at all if our "
+        "revenue declines. Demand for our products is based on many factors in addition to the "
+        "lead times described above that have caused and/or could in the future cause us to "
+        "either underestimate or overestimate our customers' future demand for our products, or "
+        "otherwise cause a mismatch between supply and demand for our products and impact the "
+        "timing and volume of our revenue, including: competing technologies and competitor "
+        "product releases and announcements; changes in business and economic conditions "
+        "resulting in decreased end demand; sudden or sustained government lockdowns or actions "
+        "to control case spread of COVID-19 or other global or local health issues; rapidly "
+        "changing technology or customer requirements; time to market; 18 Table of Contents new "
+        "product introductions and transitions resulting in less demand for existing products; "
+        "new or unexpected end use cases; increase in demand for competitive products, including "
+        "competitive actions; business decisions made by third parties; the demand for "
+        "accelerated or AI-related cloud services, including our own software and AI cloud "
+        "service offerings; the demand for cryptocurrency mining; or government actions or "
+        "changes in governmental policies, such as increased restrictions on gaming usage. Our "
+        "supply, which includes inventory on hand, purchase obligations and prepaid supply "
+        "agreements, has grown significantly due to current supply chain conditions, complexity "
+        "of our products, and recent reductions in demand. At the end of fiscal year 2023, "
+        "purchase obligations and prepaid supply agreements represented more than half of our "
+        "total supply. We may incur inventory provisions if our inventory or supply commitments "
+        "are misaligned with demand for our products. Our demand predictions may not be correct, "
+        "as we have experienced from time to time. Product transitions are complex and frequently "
+        "negatively impact our revenue as we often ship both new and legacy architecture products "
+        "simultaneously and we and our channel partners prepare to ship and support new products. "
+        "Our architecture transitions of Data Center, Professional Visualization, and Gaming "
+        "products may impair our ability to predict demand and impact our supply mix. "
+        "Qualification time for new products, customers anticipating product transitions and "
+        "channel partners reducing channel inventory of legacy architectures ahead of new product "
+        "introductions can create reductions or volatility in our revenue. We have experienced "
+        "and may in the future experience reduced demand for current generation architectures "
+        "when customers anticipate transitions, and we may be unable to sell multiple product "
+        "architectures at the same time for current and future architecture transitions. While we "
+        "have managed prior product transitions and have previously sold multiple product "
+        "architectures at the same time, these transitions are difficult and prior trends may not "
+        "continue. If we are unable to execute our architectural transitions as planned for any "
+        "reason, our financial results may be negatively impacted. We sell most of our products "
+        "through channel partners, who sell to distributors, retailers, and/or end customers. As "
+        "a result, the decisions made by our channel partners, distributors, retailers, and in "
+        "response to changing market conditions and changes in end user demand for our products "
+        "have impacted and could in the future continue to impact our ability to properly "
+        "forecast demand, particularly as they are based on estimates provided by various "
+        "downstream parties. If we underestimate our customers' future demand for our products, "
+        "our foundry partners may not have adequate lead-time or capacity to increase production "
+        "and we may not be able to obtain sufficient inventory to fill orders on a timely basis. "
+        "Even if we are able to increase production levels to meet customer demand, we may not be "
+        "able to do so in a cost-effective or timely manner, or our contract manufacturers may "
+        "experience supply constraints. If we fail to fulfill our customers' orders on a timely "
+        "basis, or at all, our customer relationships could be damaged, we could lose revenue and "
+        "market share and our reputation could be harmed. If we overestimate our customers' "
+        "future demand for our products, or if customers cancel or defer orders or choose to "
+        "purchase from our competitors, we may not be able to reduce our inventory or other "
+        "contractual purchase commitments. In the past, we have experienced a reduction in "
+        "average selling prices, including due to channel pricing programs that we have "
+        "implemented and may continue to implement, as a result of our overestimation of future "
+        "demand, and we may need to continue these reductions. We have had to increase prices for "
+        "certain of our products as a result of our suppliers' increase in prices, and we may "
+        "need to continue to do so for other products in the future. We have also written-down "
+        "our inventory, incurred cancellation penalties, and recorded impairments. These impacts "
+        "were amplified by our placement of non-cancellable and non-returnable purchasing terms, "
+        "well in advance of our historical lead times and could be exacerbated if we need to make "
+        "changes to the design of future products. The risk of these impacts has increased as our "
+        "purchase obligations and prepaids have grown and become a greater portion of our total "
+        "supply while our 19 Table of Contents revenue has sequentially declined. All of these "
+        "factors may negatively impact our gross margins and financial results. We build "
+        "technology and products for use cases and applications that may be new or may not yet "
+        "exist. Examples include our Omniverse platform and third-party large language models and "
+        "generative models."
+    ),
+    mda=(
+        "Item 7. Management's Discussion and Analysis of Financial Condition and Results of "
+        "Operations. The following discussion and analysis of our financial condition and results "
+        'of operations should be read in conjunction with "Item 1A. Risk Factors", our '
+        "Consolidated Financial Statements and related Notes thereto, as well as other cautionary "
+        "statements and risks described elsewhere in this Annual Report on Form 10-K, before "
+        "deciding to purchase, hold or sell shares of our common stock. Overview Our Company and "
+        "Our Businesses NVIDIA pioneered accelerated computing to help solve the most challenging "
+        "computational problems. Since our original focus on PC graphics, we have expanded to "
+        "several other large and important computationally intensive fields. Fueled by the "
+        "sustained demand for exceptional 3D graphics and the scale of the gaming market, NVIDIA "
+        "has leveraged its GPU architecture to create platforms for scientific computing, AI, "
+        "data science, AV, robotics, metaverse and 3D internet applications. Our two operating "
+        'segments are "Compute & Networking" and "Graphics." Refer to Note 17 of the Notes to the '
+        "Consolidated Financial Statements in Part IV, Item 15 of this Annual Report on Form 10-K "
+        "for additional information. Headquartered in Santa Clara, California, NVIDIA was "
+        "incorporated in California in April 1993 and reincorporated in Delaware in April 1998. "
+        "Recent Developments, Future Objectives and Challenges Supply, Products Transitions, and "
+        "New Products and Business Models Our supply, which includes inventory on hand, purchase "
+        "obligations and prepaid supply agreements, has grown significantly due to current supply "
+        "chain conditions, complexity of our products, and recent reductions in demand. At the "
+        "end of fiscal year 2023, purchase obligations and prepaid supply agreements represented "
+        "more than half of our total supply. Inventory provisions for excess inventory and "
+        "purchase obligations totaled $2.17 billion in fiscal year 2023. We may incur inventory "
+        "provisions if our inventory or supply commitments are misaligned with demand for our "
+        "products. Product transitions are complex as we often ship both new and legacy "
+        "architecture products simultaneously and we and our channel partners prepare to ship and "
+        "support new products. We are currently transitioning the architecture of our Data "
+        "Center, Professional Visualization, and Gaming products. Qualification time for new "
+        "products, customers anticipating product transitions and channel partners reducing "
+        "channel inventory of legacy architectures ahead of new product introductions can create "
+        "reductions or volatility in our revenue. While we have managed prior product transitions "
+        "and have previously sold multiple product architectures at the same time, these "
+        "transitions are difficult and prior trends may not continue. We build technology and "
+        "products for use cases and applications that may be new or may not yet exist. Examples "
+        "include our Omniverse platform and third-party large language models and generative "
+        "models. Our demand estimates for these use cases and applications can be incorrect and "
+        "create volatility in our revenue or supply levels, and we may not be able to generate "
+        "any revenue from these use cases and applications. NVIDIA AI Cloud Service Offerings We "
+        "will offer enterprise customers NVIDIA AI cloud services directly and through our "
+        "network of partners. Examples of these services include NVIDIA DGX Cloud, which is "
+        "cloud-based infrastructure and software for training AI models, and customizable "
+        "pretrained AI models. NVIDIA has partnered with leading cloud service providers to host "
+        "these services in their data centers. We entered into multi-year cloud service "
+        "agreements in the second half of fiscal year 2023 to these offerings and our research "
+        "and development activities. NVIDIA AI cloud services may not be successful and will take "
+        "time, resources and investment. We also offer or plan to offer standalone software "
+        "solutions for AI including NVIDIA AI Enterprise, NVIDIA Omniverse, NVIDIA DRIVE for "
+        "automotive, and several other software solutions. These new business models or "
+        "strategies may not be successful and we may fail to sell any meaningful standalone "
+        "software or as-a-service solutions. We may incur significant costs and may not achieve "
+        "any significant revenue from these offerings. 36 Table of Contents Global Trade During "
+        "the third quarter of fiscal year 2023, the USG announced new license requirements that, "
+        "with certain exceptions, impact exports to China (including Hong Kong and Macau) and "
+        "Russia of our A100 and H100 integrated circuits, DGX or any other systems or boards "
+        "which incorporate A100 or H100 integrated circuits and our A100X. We are required to "
+        "transition certain operations out of China (including Hong Kong), including research and "
+        "development and supply and distribution operations. We have engaged with customers in "
+        "China to provide alternative products not subject to the new license requirements, such "
+        "as our new A800 offering. Management of these new license and other requirements is "
+        "complicated and time consuming. Our results and competitive position may be harmed if "
+        "customers in China do not want to purchase our alternative product offerings, if "
+        "customers purchase product from competitors, or if customers develop their own internal "
+        "solution, if the USG does not grant licenses in a timely manner or denies licenses to "
+        "significant customers, or if we incur significant transition costs. COVID-19 During "
+        "fiscal year 2023, we reopened our offices worldwide. We incurred incremental expenses "
+        "and related in-office costs as we ramped onsite services. Restrictions may be imposed or "
+        "reinstated as the pandemic resurfaces, such as lockdown measures due to COVID-19 "
+        "containment efforts in China. During fiscal year 2023, end customer sales for our "
+        "products in China have been negatively impacted by lockdowns and this impact may "
+        "continue if lockdowns return. COVID-19-related disruptions have created and may continue "
+        "to create supply chain and logistics constraints. Challenges in estimating demand could "
+        "become more pronounced or volatile in the future on both a global and regional basis. "
+        "Russia In fiscal year 2023, we stopped direct sales to Russia and later in the year, we "
+        "closed business operations in Russia. Direct sales to Russia in fiscal year 2022 were "
+        "immaterial. Our revenue to partners that sell into Russia may have been negatively "
+        "impacted due to the war in Ukraine. Termination of the Arm Share Purchase Agreement In "
+        "February 2022, NVIDIA and SoftBank announced the termination of the Share Purchase "
+        "Agreement whereby NVIDIA would have acquired Arm from SoftBank due to significant "
+        "regulatory challenges preventing the completion of the transaction. We recorded an "
+        "acquisition termination cost of $1.35 billion in fiscal year 2023 reflecting the "
+        "write-off of the prepayment provided at signing. Fiscal Year 2023 Summary Year Ended "
+        "January 29, 2023 January 30, 2022 Change ($ in millions, except per share data) Revenue "
+        "$ 26,974 $ 26,914 - % Gross margin 56.9 % 64.9 % Down 8.0 pts Operating expenses $ "
+        "11,132 $ 7,434 Up 50% Income from operations $ 4,224 $ 10,041 Down 58% Net income $ "
+        "4,368 $ 9,752 Down 55% Net income per diluted share $ 1.74 $ 3.85 Down 55% We specialize "
+        "in markets where our computing platforms can provide tremendous acceleration for "
+        "applications. These platforms incorporate processors, interconnects, software, "
+        "algorithms, systems, and services to deliver unique value. Our platforms address four "
+        "large markets where our expertise is critical: Data Center, Gaming, Professional "
+        "Visualization, and Automotive. Revenue for fiscal year 2023 revenue was $26.97 billion, "
+        "flat compared with a year ago. 37 Table of Contents Data Center revenue was up 41% from "
+        "a year ago led by strong growth from hyperscale customers and also reflects purchases "
+        "made by several CSP partners to support multi-year cloud service agreements for our new "
+        "NVIDIA AI cloud service offerings and our research and development activities. Gaming "
+        "revenue was down 27% from a year ago reflecting lower sell-in to partners to help reduce "
+        "channel inventory levels as global macro-economic conditions and COVID-19 related "
+        "disruptions in China weighed on gaming demand. Professional Visualization revenue was "
+        "down 27% from a year ago reflecting a lower sell-in to partners to help reduce channel "
+        "inventory levels. Automotive revenue was up 60% from a year ago reflecting growth in "
+        "sales of self-driving solutions, computing solutions for electric vehicle makers and "
+        "strength in sales of AI cockpit solutions. The increase also included growth in "
+        "automotive development arrangements. OEM and Other revenue was down 61% from a year ago "
+        "driven by notebook OEM and CMP. CMP revenue was nominal in fiscal year 2023 and $550 "
+        "million in fiscal year 2022. Gross margin for fiscal year 2023 declined from a year ago, "
+        "driven by $2.17 billion of inventory charges largely relating to excess supply of NVIDIA "
+        "Ampere architecture Gaming and Data Center products as compared to the demand "
+        "expectations for these products, particularly for the expected demand in China. The "
+        "inventory charges were comprised of $1.04 billion for inventory on hand and $1.13 "
+        "billion for inventory purchase obligations in excess of our demand expectations. "
+        "Operating expenses, which included a $1.35 billion acquisition termination charge "
+        "related to the Arm transaction, were up 50% from a year ago."
+    ),
+)
+
+#: The committed cached corpus, keyed by uppercase ticker.
+_CACHED_FILINGS: Final[dict[str, CachedFiling]] = {
+    _AAPL.ticker: _AAPL,
+    _MSFT.ticker: _MSFT,
+    _NVDA.ticker: _NVDA,
+}
+
+#: The tickers the committed cached corpus can answer for (offline default).
+CACHED_TICKERS: Final[tuple[str, ...]] = tuple(_CACHED_FILINGS)
+
+#: Ticker -> zero-padded SEC CIK for the committed cached issuers, so retrieval can
+#: be scoped to a requested ticker's filing (the per-chunk ``cik`` provenance is the
+#: scoping key). A pure, network-free lookup over the committed bundle.
+TICKER_TO_CIK: Final[dict[str, str]] = {
+    ticker: filing.cik for ticker, filing in _CACHED_FILINGS.items()
+}
+
+
+def resolve_ticker_to_cik(ticker: str) -> str | None:
+    """Return the committed CIK for ``ticker`` (uppercased), or ``None`` if absent.
+
+    Pure dictionary lookup over the committed cached corpus - no network, no EDGAR
+    fetch. Used to scope retrieval to a single issuer's filing.
+
+    Parameters
+    ----------
+    ticker:
+        An issuer ticker (case-insensitive).
+
+    Returns
+    -------
+    str | None
+        The zero-padded CIK if the ticker is in the committed corpus, else ``None``.
+    """
+    if not isinstance(ticker, str):
+        return None
+    return TICKER_TO_CIK.get(ticker.strip().upper())
+
+
+def load_cached_filing(ticker: str = "AAPL") -> Filing:
+    """Return a committed cached 10-K for ``ticker`` as a :class:`Filing` (offline).
+
+    The returned filing carries ``data_source="cache"`` and the real public EDGAR
+    provenance (CIK / accession / acceptance datetime) for the named issuer, so a
+    citation points at an actual filing while the chunkable section text is shipped
+    in-package (no live EDGAR fetch).
+
+    Parameters
+    ----------
+    ticker:
+        A ticker present in the committed cached corpus (see :data:`CACHED_TICKERS`).
+
+    Returns
+    -------
+    Filing
+        The cached filing's document text + provenance.
+
+    Raises
+    ------
+    ValidationError
+        If ``ticker`` is not in the committed cached corpus.
+    """
+    from rag10k.ingest.client import Filing
+
+    symbol = ticker.strip().upper()
+    entry = _CACHED_FILINGS.get(symbol)
+    if entry is None:
+        raise ValidationError(
+            f"load_cached_filing: ticker {ticker!r} is not in the committed cached "
+            f"corpus (available: {list(CACHED_TICKERS)!r})."
+        )
+    return Filing(
+        cik=entry.cik,
+        ticker=entry.ticker,
+        accession_no=entry.accession_no,
+        acceptance_datetime=entry.acceptance_datetime,
+        period_of_report=entry.period_of_report,
+        raw_text=entry.document_text(),
+        data_source="cache",
+    )
+
+
+def load_cached_corpus() -> tuple[Filing, ...]:
+    """Return every committed cached 10-K as :class:`Filing` s, in ticker order.
+
+    The full offline corpus the index builder chunks + embeds and the deployed
+    default answers over. Deterministic (the committed bundle is fixed) and
+    network-free.
+
+    Returns
+    -------
+    tuple[Filing, ...]
+        One :class:`Filing` per cached issuer, ordered by :data:`CACHED_TICKERS`.
+    """
+    return tuple(load_cached_filing(ticker) for ticker in CACHED_TICKERS)

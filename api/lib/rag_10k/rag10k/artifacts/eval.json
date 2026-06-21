@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "embedder_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "n_corpus_chunks": 149,
+  "abstention_threshold": 0.5,
+  "entailment_threshold": 0.3,
+  "eps": 1e-12,
+  "summary": {
+    "recall_at_k": 0.48,
+    "citation_soundness": 0.6103741496598638,
+    "abstention_rate": 0.9,
+    "n_questions": 150,
+    "k": 5,
+    "extra": {
+      "n_in_document": 100,
+      "n_out_of_document": 50,
+      "n_soundness_samples": 98
+    }
+  },
+  "note": "Honest IR metrics from the frozen 150-Q harness over the committed cached 10-K corpus (AAPL/MSFT/NVDA). recall@k = fraction of in-document questions whose gold supporting chunk is in the top-k; citation_soundness = fraction of cited chunks entailed by the question under a deterministic lexical-overlap proxy (NOT a learned model); abstention_rate = fraction of adversarial out-of-document questions correctly abstained. No accuracy or alpha claim \u2014 this is an information-retrieval tool."
+}

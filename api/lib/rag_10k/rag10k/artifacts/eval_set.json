@@ -1,0 +1,1607 @@
+{
+  "version": 2,
+  "description": "Frozen 150-question eval set for rag-10k, regenerated deterministically from the committed real-EDGAR corpus (AAPL/MSFT/NVDA fiscal-2023 10-Ks). 100 in-document questions whose gold supporting-chunk id provably exists in the committed index (each question is built from its gold chunk's content, so it is answerable by that chunk) + 50 adversarial out-of-document abstention probes. FROZEN: regenerate via rag10k.eval.eval_builder.build_eval_set; edits change the pinned regression numbers.",
+  "n_questions": 150,
+  "questions": [
+    {
+      "qid": "q001",
+      "question": "What does Apple disclose in its risk factors about factors, financial, operations, condition?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q002",
+      "question": "What does Apple disclose in its risk factors about financial, operations, performance, statements?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q003",
+      "question": "What does Apple disclose in its risk factors about operations, global, performance, depend?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q004",
+      "question": "What does Apple disclose in its risk factors about economic, financial, adverse, impact?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:4"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q005",
+      "question": "What does Apple disclose in its risk factors about financial, operations, trade, political?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:5"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q006",
+      "question": "What does Apple disclose in its risk factors about partners, sales, international, trade?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:7"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q007",
+      "question": "What does Apple disclose in its risk factors about operations, significant, trade, supply?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:8"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q008",
+      "question": "What does Apple disclose in its risk factors about restrictions, operations, governments, restructuring?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:9"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q009",
+      "question": "What does Apple disclose in its risk factors about natural, disasters, power, accidents?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:11"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q010",
+      "question": "What does Apple disclose in its risk factors about manufacture, supply, interruption, significant?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:12"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q011",
+      "question": "What does Apple disclose in its risk factors about products, public, adversely, services?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:14"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q012",
+      "question": "What does Apple disclose in its risk factors about products, services, markets, resulting?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:15"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q013",
+      "question": "What does Apple disclose in its risk factors about products, services, price, introduction?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:16"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q014",
+      "question": "What does Apple disclose in its risk factors about intellectual, property, copyrights, competitors?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:18"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q015",
+      "question": "What does Apple disclose in its risk factors about competitors, markets, competition, resources?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:19"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q016",
+      "question": "What does Apple disclose in its risk factors about offer, competition, offerings, services?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:21"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q017",
+      "question": "What does Apple disclose in its risk factors about products, services, continually, effectively?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:22"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q018",
+      "question": "What does Apple disclose in its risk factors about products, services, technologies, demand?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:23"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q019",
+      "question": "What does Apple disclose in its risk factors about located, manufacturing, performed, outsourcing?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:25"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q020",
+      "question": "What does Apple disclose in its risk factors about time, product, arrangements, control?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:26"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q021",
+      "question": "What does Apple disclose in its risk factors about asia, supply, components, partners?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:28"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q022",
+      "question": "What does Apple disclose in its risk factors about supply, manufacturing, process, equipment?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:29"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q023",
+      "question": "What does Apple's MD&A report about discussion, financial, analysis, condition?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q024",
+      "question": "What does Apple's MD&A report about fiscal, september, week, quarter?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q025",
+      "question": "What does Apple's MD&A report about sales, service, quarter, ipad?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q026",
+      "question": "What does Apple's MD&A report about macbook, generation, apple, quarter?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:4"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q027",
+      "question": "What does Apple's MD&A report about billion, macroeconomic, conditions, segment?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:6"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q028",
+      "question": "What does Apple's MD&A report about segment, sales, reportable, change?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:7"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q029",
+      "question": "What does Apple's MD&A report about sales, decreased, europe, americas?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:9"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q030",
+      "question": "What does Apple's MD&A report about sales, greater, china, lower?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:10"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q031",
+      "question": "What does Apple's MD&A report about sales, iphone, services, category?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:12"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q032",
+      "question": "What does Apple's MD&A report about change, sales, category, iphone?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:13"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q033",
+      "question": "What does Apple's MD&A report about sales, iphone, decreased, billion?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:15"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q034",
+      "question": "What does Apple's MD&A report about sales, ipad, primarily, lower?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:16"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q035",
+      "question": "What does Microsoft disclose in its risk factors about financial, operations, risks, competition?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q036",
+      "question": "What does Microsoft disclose in its risk factors about resources, businesses, products, services?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q037",
+      "question": "What does Microsoft disclose in its risk factors about integrated, software, hardware, services?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q038",
+      "question": "What does Microsoft disclose in its risk factors about devices, revenue, operating, computers?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:4"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q039",
+      "question": "What does Microsoft disclose in its risk factors about content, applications, platform, marketplaces?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:6"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q040",
+      "question": "What does Microsoft disclose in its risk factors about model, software, competitors, content?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:7"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q041",
+      "question": "What does Microsoft disclose in its risk factors about products, services, development, compete?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:9"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q042",
+      "question": "What does Microsoft disclose in its risk factors about products, open, source, revenue?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:10"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q043",
+      "question": "What does Microsoft disclose in its risk factors about cloud, services, customers, intelligent?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:12"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q044",
+      "question": "What does Microsoft disclose in its risk factors about computing, azure, costs, intelligent?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:13"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q045",
+      "question": "What does Microsoft disclose in its risk factors about devices, cloud, services, meet?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:15"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q046",
+      "question": "What does Microsoft disclose in its risk factors about services, stolen, make, significant?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:17"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q047",
+      "question": "What does Microsoft disclose in its risk factors about services, products, make, significant?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:18"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q048",
+      "question": "What does Microsoft disclose in its risk factors about products, product, services, profitable?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:20"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q049",
+      "question": "What does Microsoft disclose in its risk factors about product, services, continue, long?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:21"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q050",
+      "question": "What does Microsoft disclose in its risk factors about announced, transactions, challenges, arrangement?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:23"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q051",
+      "question": "What does Microsoft disclose in its risk factors about arrangement, transactions, arrangements, ability?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:24"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q052",
+      "question": "What does Microsoft disclose in its risk factors about amortizable, intangible, assets, impairment?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:26"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q053",
+      "question": "What does Microsoft disclose in its risk factors about security, organizations, participate, past?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:27"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q054",
+      "question": "What does Microsoft disclose in its risk factors about customers, data, attacks, state?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:29"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q055",
+      "question": "What does Microsoft's MD&A report about financial, operations, condition, discussion?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q056",
+      "question": "What does Microsoft's MD&A report about ended, june, operations, compared?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q057",
+      "question": "What does Microsoft's MD&A report about every, empower, solutions, june?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q058",
+      "question": "What does Microsoft's MD&A report about increased, cloud, revenue, services?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:4"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q059",
+      "question": "What does Microsoft's MD&A report about revenue, services, industry, products?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:5"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q060",
+      "question": "What does Microsoft's MD&A report about services, devices, cloud, dynamic?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:7"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q061",
+      "question": "What does Microsoft's MD&A report about devices, continue, increase, operating?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:8"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q062",
+      "question": "What does Microsoft's MD&A report about revenue, expenses, ability, currencies?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:10"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q063",
+      "question": "What does Microsoft's MD&A report about revenue, expenses, changes, foreign?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:11"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q064",
+      "question": "What does Microsoft's MD&A report about areas, continue, higher, factors?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:13"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q065",
+      "question": "What does Microsoft's MD&A report about revenue, quarter, driven, spending?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:14"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q066",
+      "question": "What does Microsoft's MD&A report about income, billion, segments, amounts?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:16"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q067",
+      "question": "What does Microsoft's MD&A report about metrics, information, performance, presented?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:17"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q068",
+      "question": "What does NVIDIA disclose in its risk factors about risks, risk, factors, nvidia?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q069",
+      "question": "What does NVIDIA disclose in its risk factors about risks, markets, demand, financial?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q070",
+      "question": "What does NVIDIA disclose in its risk factors about significant, harm, operations, adversely?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q071",
+      "question": "What does NVIDIA disclose in its risk factors about customers, affected, processes, operating?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:4"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q072",
+      "question": "What does NVIDIA disclose in its risk factors about financial, reputational, harm, relating?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:6"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q073",
+      "question": "What does NVIDIA disclose in its risk factors about regulatory, proceedings, adversely, related?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:7"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q074",
+      "question": "What does NVIDIA disclose in its risk factors about products, technologies, software, meet?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:9"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q075",
+      "question": "What does NVIDIA disclose in its risk factors about maintain, customer, develop, financial?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:10"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q076",
+      "question": "What does NVIDIA disclose in its risk factors about cloud, nvidia, services, customers?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:12"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q077",
+      "question": "What does NVIDIA disclose in its risk factors about nvidia, software, solutions, cloud?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:13"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q078",
+      "question": "What does NVIDIA disclose in its risk factors about products, competitors, customer, cheaper?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:15"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q079",
+      "question": "What does NVIDIA disclose in its risk factors about demand, supply, products, manufacturing?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:17"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q080",
+      "question": "What does NVIDIA disclose in its risk factors about supply, demand, future, long?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:18"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q081",
+      "question": "What does NVIDIA disclose in its risk factors about supply, lead, times, future?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:20"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q082",
+      "question": "What does NVIDIA disclose in its risk factors about demand, future, cause, products?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:21"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q083",
+      "question": "What does NVIDIA disclose in its risk factors about supply, inventory, products, demand?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:23"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q084",
+      "question": "What does NVIDIA disclose in its risk factors about transitions, products, time, product?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:24"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q085",
+      "question": "What does NVIDIA disclose in its risk factors about products, partners, demand, impacted?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:26"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q086",
+      "question": "What does NVIDIA disclose in its risk factors about customers, able, timely, future?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:27"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q087",
+      "question": "What does NVIDIA disclose in its risk factors about future, need, products, continue?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:29"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q088",
+      "question": "What does NVIDIA's MD&A report about financial, discussion, analysis, condition?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q089",
+      "question": "What does NVIDIA's MD&A report about graphics, nvidia, computing, businesses?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q090",
+      "question": "What does NVIDIA's MD&A report about supply, products, california, april?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q091",
+      "question": "What does NVIDIA's MD&A report about products, product, transitions, channel?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:4"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q092",
+      "question": "What does NVIDIA's MD&A report about cases, applications, nvidia, cloud?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:5"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q093",
+      "question": "What does NVIDIA's MD&A report about software, solutions, nvidia, successful?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:7"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q094",
+      "question": "What does NVIDIA's MD&A report about china, license, requirements, certain?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:8"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q095",
+      "question": "What does NVIDIA's MD&A report about covid, significant, costs, fiscal?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:10"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q096",
+      "question": "What does NVIDIA's MD&A report about russia, continue, fiscal, direct?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:11"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q097",
+      "question": "What does NVIDIA's MD&A report about down, income, january, share?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:13"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q098",
+      "question": "What does NVIDIA's MD&A report about platforms, revenue, down, markets?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:14"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q099",
+      "question": "What does NVIDIA's MD&A report about revenue, solutions, down, reflecting?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:16"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q100",
+      "question": "What does NVIDIA's MD&A report about inventory, fiscal, billion, demand?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:17"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q101",
+      "question": "What is Apple's CEO's home address and phone number?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q102",
+      "question": "What is Microsoft's CEO's home address and phone number?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q103",
+      "question": "What is NVIDIA's CEO's home address and phone number?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q104",
+      "question": "What did the weather forecast predict for Apple's headquarters tomorrow?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q105",
+      "question": "What did the weather forecast predict for Microsoft's headquarters tomorrow?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q106",
+      "question": "What did the weather forecast predict for NVIDIA's headquarters tomorrow?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q107",
+      "question": "What is the recipe for Apple's signature chocolate cake?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q108",
+      "question": "What is the recipe for Microsoft's signature chocolate cake?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q109",
+      "question": "What is the recipe for NVIDIA's signature chocolate cake?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q110",
+      "question": "How many gold medals did Apple win at the Winter Olympics?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q111",
+      "question": "How many gold medals did Microsoft win at the Winter Olympics?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q112",
+      "question": "How many gold medals did NVIDIA win at the Winter Olympics?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q113",
+      "question": "What is Apple's favourite colour and zodiac sign?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q114",
+      "question": "What is Microsoft's favourite colour and zodiac sign?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q115",
+      "question": "What is NVIDIA's favourite colour and zodiac sign?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q116",
+      "question": "Which Premier League football club does Apple sponsor?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q117",
+      "question": "Which Premier League football club does Microsoft sponsor?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q118",
+      "question": "Which Premier League football club does NVIDIA sponsor?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q119",
+      "question": "What time does Apple's neighbourhood coffee shop open on Sundays?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q120",
+      "question": "What time does Microsoft's neighbourhood coffee shop open on Sundays?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q121",
+      "question": "What time does NVIDIA's neighbourhood coffee shop open on Sundays?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q122",
+      "question": "What are the lyrics to Apple's official anthem?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q123",
+      "question": "What are the lyrics to Microsoft's official anthem?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q124",
+      "question": "What are the lyrics to NVIDIA's official anthem?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q125",
+      "question": "How many penguins live at Apple's Antarctic research station?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q126",
+      "question": "How many penguins live at Microsoft's Antarctic research station?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q127",
+      "question": "How many penguins live at NVIDIA's Antarctic research station?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q128",
+      "question": "What was the winning lottery number drawn at Apple last night?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q129",
+      "question": "What was the winning lottery number drawn at Microsoft last night?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q130",
+      "question": "What was the winning lottery number drawn at NVIDIA last night?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q131",
+      "question": "What breed is Apple's office therapy dog?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q132",
+      "question": "What breed is Microsoft's office therapy dog?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q133",
+      "question": "What breed is NVIDIA's office therapy dog?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q134",
+      "question": "What is the plot of the next novel Apple plans to publish?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q135",
+      "question": "What is the plot of the next novel Microsoft plans to publish?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q136",
+      "question": "What is the plot of the next novel NVIDIA plans to publish?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q137",
+      "question": "How tall is the tallest mountain Apple has climbed?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q138",
+      "question": "How tall is the tallest mountain Microsoft has climbed?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q139",
+      "question": "How tall is the tallest mountain NVIDIA has climbed?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q140",
+      "question": "What vegetables are growing in Apple's rooftop garden this spring?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q141",
+      "question": "What vegetables are growing in Microsoft's rooftop garden this spring?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q142",
+      "question": "What vegetables are growing in NVIDIA's rooftop garden this spring?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q143",
+      "question": "Who won the karaoke contest at Apple's holiday party?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q144",
+      "question": "Who won the karaoke contest at Microsoft's holiday party?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q145",
+      "question": "Who won the karaoke contest at NVIDIA's holiday party?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q146",
+      "question": "What is Apple's record for the 100-metre sprint?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q147",
+      "question": "What is Microsoft's record for the 100-metre sprint?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q148",
+      "question": "What is NVIDIA's record for the 100-metre sprint?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q149",
+      "question": "What colour are the curtains in Apple's lobby caf\u00e9?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q150",
+      "question": "What colour are the curtains in Microsoft's lobby caf\u00e9?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    }
+  ]
+}

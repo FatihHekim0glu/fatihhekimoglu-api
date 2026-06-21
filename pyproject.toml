@@ -128,6 +128,7 @@ module = [
     "fedcausal.*",
     "rltrader.*",
     "algosystem.*",
+    "rag10k.*",
 ]
 ignore_missing_imports = true
 
