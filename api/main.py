@@ -40,6 +40,7 @@ from .routers import (
     pairs_trading,
     rag_10k,
     regime_hmm,
+    rl_allocator,
     rl_trader,
     stock_clusters,
     stock_dashboard,
@@ -112,5 +113,6 @@ app.include_router(edgar_nlp.router)
 app.include_router(gnn_stocks.router)
 app.include_router(fed_causal.router)
 app.include_router(rl_trader.router)
+app.include_router(rl_allocator.router)
 app.include_router(algo_system.router)
 app.include_router(rag_10k.router)
