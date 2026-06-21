@@ -1,0 +1,1607 @@
+{
+  "version": 1,
+  "description": "Frozen 150-question eval set for rag-10k (committed corpus: AAPL/MSFT/NVDA). 100 in-document questions with gold supporting-chunk ids + 50 adversarial out-of-document abstention probes. FROZEN: edits change the pinned regression numbers.",
+  "n_questions": 150,
+  "questions": [
+    {
+      "qid": "q001",
+      "question": "What supply chain risks does AAPL disclose in its risk factors?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q002",
+      "question": "What supply chain risks does MSFT disclose in its risk factors?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q003",
+      "question": "What supply chain risks does NVDA disclose in its risk factors?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q004",
+      "question": "How does AAPL describe its liquidity and capital resources?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q005",
+      "question": "How does MSFT describe its liquidity and capital resources?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q006",
+      "question": "How does NVDA describe its liquidity and capital resources?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q007",
+      "question": "What competitive risks does AAPL identify in its 10-K?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q008",
+      "question": "What competitive risks does MSFT identify in its 10-K?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q009",
+      "question": "What competitive risks does NVDA identify in its 10-K?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q010",
+      "question": "What does AAPL's MD&A say about revenue trends?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q011",
+      "question": "What does MSFT's MD&A say about revenue trends?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q012",
+      "question": "What does NVDA's MD&A say about revenue trends?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q013",
+      "question": "How does AAPL describe macroeconomic and demand risks?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q014",
+      "question": "How does MSFT describe macroeconomic and demand risks?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q015",
+      "question": "How does NVDA describe macroeconomic and demand risks?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q016",
+      "question": "How does AAPL discuss changes in operating expenses?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q017",
+      "question": "How does MSFT discuss changes in operating expenses?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q018",
+      "question": "How does NVDA discuss changes in operating expenses?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q019",
+      "question": "What risks does AAPL cite around its dependence on key suppliers?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q020",
+      "question": "What risks does MSFT cite around its dependence on key suppliers?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q021",
+      "question": "What risks does NVDA cite around its dependence on key suppliers?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q022",
+      "question": "What does AAPL report about its gross margin in the MD&A?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q023",
+      "question": "What does MSFT report about its gross margin in the MD&A?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q024",
+      "question": "What does NVDA report about its gross margin in the MD&A?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q025",
+      "question": "What cybersecurity or data-security risks does AAPL disclose?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q026",
+      "question": "What cybersecurity or data-security risks does MSFT disclose?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q027",
+      "question": "What cybersecurity or data-security risks does NVDA disclose?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q028",
+      "question": "How does AAPL describe its cash flow from operations?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q029",
+      "question": "How does MSFT describe its cash flow from operations?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q030",
+      "question": "How does NVDA describe its cash flow from operations?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q031",
+      "question": "What risks does AAPL note regarding international operations and currency?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q032",
+      "question": "What risks does MSFT note regarding international operations and currency?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q033",
+      "question": "What risks does NVDA note regarding international operations and currency?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q034",
+      "question": "What does AAPL's MD&A say about segment performance?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q035",
+      "question": "What does MSFT's MD&A say about segment performance?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q036",
+      "question": "What does NVDA's MD&A say about segment performance?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q037",
+      "question": "How does AAPL characterize risks to its product margins?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q038",
+      "question": "How does MSFT characterize risks to its product margins?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q039",
+      "question": "How does NVDA characterize risks to its product margins?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q040",
+      "question": "How does AAPL discuss research and development spending?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q041",
+      "question": "How does MSFT discuss research and development spending?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q042",
+      "question": "How does NVDA discuss research and development spending?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q043",
+      "question": "What regulatory or legal risks does AAPL describe?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q044",
+      "question": "What regulatory or legal risks does MSFT describe?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q045",
+      "question": "What regulatory or legal risks does NVDA describe?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q046",
+      "question": "What does AAPL report about foreign-exchange impact on results?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q047",
+      "question": "What does MSFT report about foreign-exchange impact on results?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q048",
+      "question": "What does NVDA report about foreign-exchange impact on results?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q049",
+      "question": "What risks does AAPL disclose about its reliance on third-party manufacturing?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q050",
+      "question": "What risks does MSFT disclose about its reliance on third-party manufacturing?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q051",
+      "question": "What risks does NVDA disclose about its reliance on third-party manufacturing?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q052",
+      "question": "How does AAPL describe its capital return / share repurchase activity?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q053",
+      "question": "How does MSFT describe its capital return / share repurchase activity?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q054",
+      "question": "How does NVDA describe its capital return / share repurchase activity?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q055",
+      "question": "What risks to AAPL's gross margin and pricing are disclosed?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q056",
+      "question": "What risks to MSFT's gross margin and pricing are disclosed?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q057",
+      "question": "What risks to NVDA's gross margin and pricing are disclosed?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q058",
+      "question": "What does AAPL's MD&A say about year-over-year net income?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q059",
+      "question": "What does MSFT's MD&A say about year-over-year net income?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q060",
+      "question": "What does NVDA's MD&A say about year-over-year net income?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q061",
+      "question": "What supply chain risks does AAPL disclose in its risk factors?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q062",
+      "question": "What supply chain risks does MSFT disclose in its risk factors?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q063",
+      "question": "What supply chain risks does NVDA disclose in its risk factors?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q064",
+      "question": "How does AAPL describe its liquidity and capital resources?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q065",
+      "question": "How does MSFT describe its liquidity and capital resources?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q066",
+      "question": "How does NVDA describe its liquidity and capital resources?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q067",
+      "question": "What competitive risks does AAPL identify in its 10-K?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q068",
+      "question": "What competitive risks does MSFT identify in its 10-K?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q069",
+      "question": "What competitive risks does NVDA identify in its 10-K?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q070",
+      "question": "What does AAPL's MD&A say about revenue trends?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q071",
+      "question": "What does MSFT's MD&A say about revenue trends?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q072",
+      "question": "What does NVDA's MD&A say about revenue trends?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q073",
+      "question": "How does AAPL describe macroeconomic and demand risks?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q074",
+      "question": "How does MSFT describe macroeconomic and demand risks?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q075",
+      "question": "How does NVDA describe macroeconomic and demand risks?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q076",
+      "question": "How does AAPL discuss changes in operating expenses?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q077",
+      "question": "How does MSFT discuss changes in operating expenses?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q078",
+      "question": "How does NVDA discuss changes in operating expenses?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q079",
+      "question": "What risks does AAPL cite around its dependence on key suppliers?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q080",
+      "question": "What risks does MSFT cite around its dependence on key suppliers?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q081",
+      "question": "What risks does NVDA cite around its dependence on key suppliers?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q082",
+      "question": "What does AAPL report about its gross margin in the MD&A?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q083",
+      "question": "What does MSFT report about its gross margin in the MD&A?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q084",
+      "question": "What does NVDA report about its gross margin in the MD&A?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q085",
+      "question": "What cybersecurity or data-security risks does AAPL disclose?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q086",
+      "question": "What cybersecurity or data-security risks does MSFT disclose?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q087",
+      "question": "What cybersecurity or data-security risks does NVDA disclose?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q088",
+      "question": "How does AAPL describe its cash flow from operations?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q089",
+      "question": "How does MSFT describe its cash flow from operations?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q090",
+      "question": "How does NVDA describe its cash flow from operations?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q091",
+      "question": "What risks does AAPL note regarding international operations and currency?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q092",
+      "question": "What risks does MSFT note regarding international operations and currency?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q093",
+      "question": "What risks does NVDA note regarding international operations and currency?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:2"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q094",
+      "question": "What does AAPL's MD&A say about segment performance?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q095",
+      "question": "What does MSFT's MD&A say about segment performance?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q096",
+      "question": "What does NVDA's MD&A say about segment performance?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:mda:3"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q097",
+      "question": "How does AAPL characterize risks to its product margins?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q098",
+      "question": "How does MSFT characterize risks to its product margins?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [
+        "0000950170-23-035122:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q099",
+      "question": "How does NVDA characterize risks to its product margins?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [
+        "0001045810-23-000017:risk_factors:0"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "risk_factors"
+      }
+    },
+    {
+      "qid": "q100",
+      "question": "How does AAPL discuss research and development spending?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [
+        "0000320193-23-000106:mda:1"
+      ],
+      "out_of_document": false,
+      "extra": {
+        "section": "mda"
+      }
+    },
+    {
+      "qid": "q101",
+      "question": "What was AAPL's cryptocurrency mining revenue in 2030?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q102",
+      "question": "What was MSFT's cryptocurrency mining revenue in 2030?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q103",
+      "question": "What was NVDA's cryptocurrency mining revenue in 2030?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q104",
+      "question": "Who is the head coach of AAPL's professional basketball team?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q105",
+      "question": "Who is the head coach of MSFT's professional basketball team?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q106",
+      "question": "Who is the head coach of NVDA's professional basketball team?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q107",
+      "question": "What is the boiling point of AAPL's flagship beverage?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q108",
+      "question": "What is the boiling point of MSFT's flagship beverage?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q109",
+      "question": "What is the boiling point of NVDA's flagship beverage?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q110",
+      "question": "How many lunar landings did AAPL sponsor last quarter?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q111",
+      "question": "How many lunar landings did MSFT sponsor last quarter?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q112",
+      "question": "How many lunar landings did NVDA sponsor last quarter?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q113",
+      "question": "What is AAPL's official position on interstellar shipping tariffs?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q114",
+      "question": "What is MSFT's official position on interstellar shipping tariffs?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q115",
+      "question": "What is NVDA's official position on interstellar shipping tariffs?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q116",
+      "question": "What is the air-speed velocity of an unladen swallow per AAPL's filing?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q117",
+      "question": "What is the air-speed velocity of an unladen swallow per MSFT's filing?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q118",
+      "question": "What is the air-speed velocity of an unladen swallow per NVDA's filing?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q119",
+      "question": "Which Michelin-starred restaurant does AAPL operate in Antarctica?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q120",
+      "question": "Which Michelin-starred restaurant does MSFT operate in Antarctica?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q121",
+      "question": "Which Michelin-starred restaurant does NVDA operate in Antarctica?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q122",
+      "question": "What was AAPL's gold-medal count at the most recent Olympic games?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q123",
+      "question": "What was MSFT's gold-medal count at the most recent Olympic games?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q124",
+      "question": "What was NVDA's gold-medal count at the most recent Olympic games?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q125",
+      "question": "How many dragons appear in AAPL's annual fantasy novel?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q126",
+      "question": "How many dragons appear in MSFT's annual fantasy novel?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q127",
+      "question": "How many dragons appear in NVDA's annual fantasy novel?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q128",
+      "question": "What is the resale value of AAPL's time-travel division?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q129",
+      "question": "What is the resale value of MSFT's time-travel division?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q130",
+      "question": "What is the resale value of NVDA's time-travel division?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q131",
+      "question": "What was AAPL's cryptocurrency mining revenue in 2030?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q132",
+      "question": "What was MSFT's cryptocurrency mining revenue in 2030?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q133",
+      "question": "What was NVDA's cryptocurrency mining revenue in 2030?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q134",
+      "question": "Who is the head coach of AAPL's professional basketball team?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q135",
+      "question": "Who is the head coach of MSFT's professional basketball team?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q136",
+      "question": "Who is the head coach of NVDA's professional basketball team?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q137",
+      "question": "What is the boiling point of AAPL's flagship beverage?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q138",
+      "question": "What is the boiling point of MSFT's flagship beverage?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q139",
+      "question": "What is the boiling point of NVDA's flagship beverage?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q140",
+      "question": "How many lunar landings did AAPL sponsor last quarter?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q141",
+      "question": "How many lunar landings did MSFT sponsor last quarter?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q142",
+      "question": "How many lunar landings did NVDA sponsor last quarter?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q143",
+      "question": "What is AAPL's official position on interstellar shipping tariffs?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q144",
+      "question": "What is MSFT's official position on interstellar shipping tariffs?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q145",
+      "question": "What is NVDA's official position on interstellar shipping tariffs?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q146",
+      "question": "What is the air-speed velocity of an unladen swallow per AAPL's filing?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q147",
+      "question": "What is the air-speed velocity of an unladen swallow per MSFT's filing?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q148",
+      "question": "What is the air-speed velocity of an unladen swallow per NVDA's filing?",
+      "ticker": "NVDA",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q149",
+      "question": "Which Michelin-starred restaurant does AAPL operate in Antarctica?",
+      "ticker": "AAPL",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    },
+    {
+      "qid": "q150",
+      "question": "Which Michelin-starred restaurant does MSFT operate in Antarctica?",
+      "ticker": "MSFT",
+      "gold_chunk_ids": [],
+      "out_of_document": true,
+      "extra": {}
+    }
+  ]
+}
