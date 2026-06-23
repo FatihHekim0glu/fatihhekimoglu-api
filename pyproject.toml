@@ -61,6 +61,10 @@ dependencies = [
     # the HF `tokenizers` library for the tokenizer.json. NO torch, NO transformers
     # on this serve path; the lexicon baseline is the torch-free fallback.
     "tokenizers>=0.20",
+    # vendored from rag-10k [serve]: the GENERATIVE answer path lazily constructs an
+    # Anthropic client ONLY when ANTHROPIC_API_KEY is set (generation is opt-in via
+    # mode="generative"); retrieval + the extractive default never import it.
+    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]
