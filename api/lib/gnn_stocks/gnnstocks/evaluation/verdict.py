@@ -3,8 +3,8 @@
 The headline verdict is a PURE FUNCTION of the inference outputs. It CANNOT read
 ``True`` ("a GNN beats the best per-node ridge / cross-sectional-momentum
 baseline") unless a GNN beats that baseline with a Diebold-Mariano-significant
-margin on the rank-IC / long-short differential AND a positive Deflated Sharpe net
-of costs. This is what keeps the README honest: message passing over the
+margin on the rank-IC / long-short differential AND a Deflated Sharpe clearing the
+``1 - alpha`` confidence threshold (``>= 0.95``) net of costs. This is what keeps the README honest: message passing over the
 correlation graph recovers sector/cluster structure (DESCRIPTIVE) but the
 documented, leakage-free outcome is that the GCN / GraphSAGE do NOT reliably beat
 the baselines on OOS rank-IC or long-short decile spread. The verdict is derived
@@ -34,11 +34,11 @@ class Verdict(StrEnum):
     """
 
     #: A GNN beats the best baseline with a DM-significant rank-IC / long-short
-    #: margin AND a positive DSR.
+    #: margin AND a DSR clearing the 1 - alpha confidence threshold (>= 0.95).
     GNN_BEATS_BASELINE = "gnn_beats_baseline"
 
     #: No GNN is distinguishable from the best baseline (DM insignificant or
-    #: DSR <= 0) — the expected, leakage-free outcome.
+    #: DSR < 0.95 (1 - alpha)) — the expected, leakage-free outcome.
     NO_SIGNIFICANT_DIFFERENCE = "no_significant_difference"
 
 
@@ -51,8 +51,9 @@ class VerdictResult:
     verdict:
         The derived :class:`Verdict` enum value.
     gnn_beats_baseline:
-        ``True`` iff a GNN cleared BOTH the DM-significance and positive-DSR
-        gates. Mirrors ``verdict == Verdict.GNN_BEATS_BASELINE``.
+        ``True`` iff a GNN cleared BOTH the DM-significance gate and the DSR
+        ``1 - alpha`` confidence gate (``deflated_sharpe >= 0.95``). Mirrors
+        ``verdict == Verdict.GNN_BEATS_BASELINE``.
     best_gnn_model:
         Name of the best-performing GNN (highest OOS rank-IC), for reporting.
     best_baseline:
@@ -91,6 +92,7 @@ def derive_verdict(
     n_effective_trials: int,
     *,
     alpha: float = 0.05,
+    dsr_threshold: float = 0.95,
 ) -> VerdictResult:
     r"""Derive the headline ``gnn_beats_baseline`` verdict (pure function).
 
@@ -101,14 +103,16 @@ def derive_verdict(
        significant (``dm_pvalue < alpha``);
     2. the DM statistic is signed in the model's favour (``dm_statistic > 0`` — a
        strictly *higher* mean rank-IC / long-short return than the baseline);
-    3. the Deflated Sharpe of the GNN's long-short net return is strictly positive
-       (``deflated_sharpe > 0`` against the multiplicity-inflated benchmark with
-       ``n_effective_trials`` = graph-types x models x HP grid).
+    3. the Deflated Sharpe of the GNN's long-short net return clears the
+       ``1 - alpha`` confidence threshold (``deflated_sharpe >= dsr_threshold``,
+       default ``>= 0.95``) against the multiplicity-inflated benchmark with
+       ``n_effective_trials`` = graph-types x models x HP grid.
 
     If ANY of the three fails, the verdict is
     :attr:`Verdict.NO_SIGNIFICANT_DIFFERENCE` — the expected, leakage-free
     outcome. This function MUST NOT return :attr:`Verdict.GNN_BEATS_BASELINE`
-    while the DM test is insignificant or the DSR is non-positive, regardless of
+    while the DM test is insignificant or the DSR fails the ``1 - alpha``
+    confidence threshold (``deflated_sharpe < dsr_threshold``), regardless of
     any point estimate. The verdict is a deterministic consequence of the
     evidence, never a narrative choice.
 
@@ -130,6 +134,11 @@ def derive_verdict(
         The honest multiplicity count (#graph-types x #models x #HP configs).
     alpha:
         Significance level for the DM test (default ``0.05``).
+    dsr_threshold:
+        Minimum Deflated Sharpe (a probability in ``[0, 1]``) required to clear
+        the overfitting gate. Defaults to ``0.95`` (the portfolio-standard
+        ``1 - alpha`` confidence level); the DSR must satisfy
+        ``deflated_sharpe >= dsr_threshold``.
 
     Returns
     -------
@@ -153,8 +162,10 @@ def derive_verdict(
     # Gate 1+2: the Diebold-Mariano test must be significant AND signed in the
     # model's favour (a strictly higher mean rank-IC / long-short return).
     dm_ok = dm_favours_model(dm_statistic, dm_pvalue, alpha=alpha)
-    # Gate 3: the Deflated Sharpe (FULL-grid n_trials) must clear zero.
-    dsr_ok = deflated_sharpe > 0.0
+    # Gate 3: the Deflated Sharpe (FULL-grid n_trials) must clear the 1 - alpha
+    # confidence threshold (default >= 0.95). The DSR is a probability in [0, 1];
+    # gating at 0.95 is the portfolio standard, not the vacuous "> 0".
+    dsr_ok = deflated_sharpe >= dsr_threshold
 
     beats = dm_ok and dsr_ok
     verdict = Verdict.GNN_BEATS_BASELINE if beats else Verdict.NO_SIGNIFICANT_DIFFERENCE

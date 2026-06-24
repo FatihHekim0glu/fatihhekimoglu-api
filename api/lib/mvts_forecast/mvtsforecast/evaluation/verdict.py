@@ -2,7 +2,8 @@
 
 The headline verdict is a PURE FUNCTION of the inference outputs. It CANNOT read
 ``True`` ("a deep model beats the naive random walk") unless a deep model beats
-naive with a Diebold-Mariano-significant margin AND a positive Deflated Sharpe.
+naive with a Diebold-Mariano-significant margin AND a Deflated Sharpe that clears
+the 1-alpha confidence threshold (>= 0.95).
 This is what keeps the README honest on noisy daily returns, where the documented,
 literature-consistent outcome is that PatchTST / the interpretable transformer /
 the LSTM do NOT reliably beat a naive baseline: the verdict is derived from the
@@ -31,11 +32,13 @@ class Verdict(StrEnum):
     boundary and render in the frontend.
     """
 
-    #: A deep model beats naive with a DM-significant margin AND a positive DSR.
+    #: A deep model beats naive with a DM-significant margin AND a DSR that
+    #: clears the 1-alpha confidence threshold (>= 0.95).
     DEEP_BEATS_NAIVE = "deep_beats_naive"
 
-    #: No deep model is distinguishable from naive (DM insignificant or DSR <= 0)
-    #: — the expected, literature-consistent outcome on noisy daily returns.
+    #: No deep model is distinguishable from naive (DM insignificant or DSR < 0.95
+    #: (1 - alpha)) — the expected, literature-consistent outcome on noisy daily
+    #: returns.
     NO_SIGNIFICANT_DIFFERENCE = "no_significant_difference"
 
 
@@ -48,8 +51,9 @@ class VerdictResult:
     verdict:
         The derived :class:`Verdict` enum value.
     deep_beats_naive:
-        ``True`` iff a deep model cleared BOTH the DM-significance and
-        positive-DSR gates. Mirrors ``verdict == Verdict.DEEP_BEATS_NAIVE``.
+        ``True`` iff a deep model cleared BOTH the DM-significance and the
+        DSR >= 0.95 (1 - alpha) gates. Mirrors
+        ``verdict == Verdict.DEEP_BEATS_NAIVE``.
     best_deep_model:
         Name of the best-performing deep model (lowest RMSE), for reporting.
     dm_pvalue:
@@ -82,6 +86,7 @@ def derive_verdict(
     n_effective_trials: int,
     *,
     alpha: float = 0.05,
+    dsr_threshold: float = 0.95,
 ) -> VerdictResult:
     r"""Derive the headline ``deep_beats_naive`` verdict (pure function).
 
@@ -91,15 +96,18 @@ def derive_verdict(
     1. the Diebold-Mariano test is significant (``dm_pvalue < alpha``);
     2. the DM statistic is signed in the model's favour (``dm_statistic < 0`` —
        strictly lower squared-error loss than the naive forecast);
-    3. the Deflated Sharpe is strictly positive (``deflated_sharpe > 0`` against
-       the multiplicity-inflated benchmark with ``n_effective_trials``).
+    3. the Deflated Sharpe clears the 1-alpha confidence threshold
+       (``deflated_sharpe >= 0.95`` against the multiplicity-inflated benchmark
+       with ``n_effective_trials``). The DSR is a probability in ``[0, 1]`` (a
+       CDF), so the portfolio standard gates at ``1 - alpha = 0.95``; gating at
+       ``> 0`` would be vacuous (~always true) and guard nothing.
 
     If ANY of the three fails, the verdict is
     :attr:`Verdict.NO_SIGNIFICANT_DIFFERENCE` — the expected outcome on noisy
     daily returns. This function MUST NOT return :attr:`Verdict.DEEP_BEATS_NAIVE`
-    while the DM test is insignificant or the DSR is non-positive, regardless of
-    any point estimate. The verdict is a deterministic consequence of the
-    evidence, never a narrative choice.
+    while the DM test is insignificant or the DSR fails to clear ``dsr_threshold``,
+    regardless of any point estimate. The verdict is a deterministic consequence
+    of the evidence, never a narrative choice.
 
     Parameters
     ----------
@@ -116,6 +124,10 @@ def derive_verdict(
         The honest multiplicity count (#architectures x #HP configs).
     alpha:
         Significance level for the DM test (default ``0.05``).
+    dsr_threshold:
+        The 1-alpha confidence threshold the Deflated Sharpe (a CDF in
+        ``[0, 1]``) must clear for the DSR gate (keyword-only, default ``0.95``,
+        the portfolio standard). The gate is ``deflated_sharpe >= dsr_threshold``.
 
     Returns
     -------
@@ -139,8 +151,10 @@ def derive_verdict(
     # Gate 1+2: the Diebold-Mariano test must be significant AND signed in the
     # model's favour (strictly lower squared-error loss than the naive forecast).
     dm_ok = dm_favours_model(dm_statistic, dm_pvalue, alpha=alpha)
-    # Gate 3: the Deflated Sharpe (FULL-grid n_trials) must clear zero.
-    dsr_ok = deflated_sharpe > 0.0
+    # Gate 3: the Deflated Sharpe (FULL-grid n_trials) — a probability in [0, 1] —
+    # must clear the 1-alpha confidence threshold (the portfolio standard 0.95),
+    # not merely exceed zero (which is vacuous for a CDF and guards nothing).
+    dsr_ok = deflated_sharpe >= dsr_threshold
 
     beats = dm_ok and dsr_ok
     verdict = Verdict.DEEP_BEATS_NAIVE if beats else Verdict.NO_SIGNIFICANT_DIFFERENCE

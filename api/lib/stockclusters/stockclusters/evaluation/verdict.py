@@ -3,7 +3,8 @@
 The headline verdict is a PURE FUNCTION of the inference outputs
 ``(memmel_jk_pvalue, deflated_sharpe, sharpe_diff)`` from a fixed enum. It is
 structurally incapable of emitting ``clusters_beat_1n`` while the Memmel-JK test is
-insignificant or the deflated Sharpe is non-positive — the truth table is
+insignificant or the deflated Sharpe fails the ``1 - alpha = 0.95`` confidence
+threshold - the truth table is
 unit-tested. This is what keeps the README honest: the verdict is derived from the
 evidence, never narrated.
 
@@ -34,7 +35,7 @@ class ClusteringVerdict(StrEnum):
     #: The OOS Sharpe gap is negative AND statistically significant.
     CLUSTERS_LOSE_TO_1N = "clusters_lose_to_1n"
 
-    #: The gap is not statistically distinguishable from zero — the expected,
+    #: The gap is not statistically distinguishable from zero - the expected,
     #: literature-consistent outcome (clustering is diagnostic, not alpha).
     NO_SIGNIFICANT_DIFFERENCE = "no_significant_difference"
 
@@ -45,16 +46,17 @@ def derive_clustering_verdict(
     sharpe_diff: float,
     *,
     alpha: float = 0.05,
-    dsr_threshold: float = 0.0,
+    dsr_threshold: float = 0.95,
 ) -> ClusteringVerdict:
     r"""Derive the headline clustering verdict (pure function).
 
     Decision rule (truth-table unit-tested):
 
     1. If the Memmel-JK test is insignificant (``memmel_jk_pvalue >= alpha``) OR the
-       deflated Sharpe fails its threshold (``deflated_sharpe <= dsr_threshold``),
-       return :attr:`ClusteringVerdict.NO_SIGNIFICANT_DIFFERENCE`. (A directional
-       claim requires BOTH the test AND the DSR to support it.)
+       deflated Sharpe fails to clear the ``1 - alpha = 0.95`` confidence threshold
+       (``deflated_sharpe <= dsr_threshold``), return
+       :attr:`ClusteringVerdict.NO_SIGNIFICANT_DIFFERENCE`. (A directional claim
+       requires BOTH the test AND the DSR to support it.)
     2. Otherwise, if ``sharpe_diff > 0``, return
        :attr:`ClusteringVerdict.CLUSTERS_BEAT_1N`.
     3. Otherwise (``sharpe_diff < 0``), return
@@ -62,8 +64,9 @@ def derive_clustering_verdict(
 
     HONESTY REQUIREMENT: this function MUST NOT return
     :attr:`ClusteringVerdict.CLUSTERS_BEAT_1N` while the Memmel-JK p-value is
-    insignificant or the deflated Sharpe is non-positive, regardless of the point
-    estimate. The verdict is a deterministic consequence of the evidence.
+    insignificant or the deflated Sharpe fails to clear its ``1 - alpha = 0.95``
+    confidence threshold, regardless of the point estimate. The verdict is a
+    deterministic consequence of the evidence.
 
     Parameters
     ----------
@@ -78,7 +81,9 @@ def derive_clustering_verdict(
         Significance level for the Memmel-JK test (default ``0.05``).
     dsr_threshold:
         Minimum deflated Sharpe required to support a positive claim (default
-        ``0.0``: the DSR must be strictly positive).
+        ``0.95``: the DSR is a probability/CDF in ``[0, 1]`` and must clear the
+        ``1 - alpha = 0.95`` confidence threshold, i.e. the DSR fails if
+        ``deflated_sharpe <= 0.95``).
 
     Returns
     -------
@@ -96,7 +101,7 @@ def derive_clustering_verdict(
         )
 
     # A directional claim requires BOTH the Memmel-JK test AND the deflated Sharpe
-    # to support it. If either fails, the honest verdict is "no difference" —
+    # to support it. If either fails, the honest verdict is "no difference" -
     # regardless of the sign or magnitude of the point estimate. This is the
     # structural guard that makes a false "beats 1/N" claim impossible.
     test_insignificant = memmel_jk_pvalue >= alpha
