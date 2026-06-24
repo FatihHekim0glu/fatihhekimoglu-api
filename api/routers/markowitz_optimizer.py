@@ -70,6 +70,18 @@ _TRADING_DAYS = 252
 _FRONTIER_POINTS = 40
 _ACTIVE_WEIGHT_TOL = 1e-4
 
+# ---------------------------------------------------------------------------
+# DoS guards
+# ---------------------------------------------------------------------------
+# Each request runs a per-request cvxpy QP solve (MeanVariance.max_sharpe) whose
+# cost grows with the asset count, plus a per-ticker EOD fetch over [start, end].
+# Without bounds an attacker can request a huge universe and/or a multi-decade
+# span to force unbounded compute. We mirror the eigen-portfolios guard
+# (``_MAX_CUSTOM_TICKERS``) with a ticker-count cap and add a max date-span cap.
+# Both are enforced in the request validators below → 422 on violation.
+_MAX_TICKERS = 100          # cvxpy QP is heavier per-asset than eigen's PCA
+_MAX_DATE_SPAN_DAYS = 7670  # ~21 years — comfortably covers the 2020-2024 default
+
 
 class MarkowitzRequest(BaseModel):
     """Mirrors the source ``SidebarConfig`` dataclass.
@@ -114,6 +126,12 @@ class MarkowitzRequest(BaseModel):
         seen: dict[str, None] = {}
         for t in cleaned:
             seen.setdefault(t, None)
+        # DoS guard: bound the per-request cvxpy QP by capping the universe size.
+        if len(seen) > _MAX_TICKERS:
+            raise ValueError(
+                f"custom universe has {len(seen)} tickers but is capped at "
+                f"{_MAX_TICKERS}"
+            )
         return ",".join(seen)
 
     @field_validator("end")
@@ -122,6 +140,22 @@ class MarkowitzRequest(BaseModel):
         start = info.data.get("start")
         if start is not None and v <= start:
             raise ValueError("end must be strictly after start")
+        # DoS guard: bound the per-ticker EOD fetch + returns matrix by capping
+        # the [start, end] span. ``start`` may be absent if it failed its own
+        # validation; skip the span check in that case (pydantic surfaces the
+        # underlying start error).
+        if start is not None:
+            try:
+                span_days = (_date.fromisoformat(v) - _date.fromisoformat(start)).days
+            except ValueError:
+                # Malformed ISO date — leave it for the downstream parser to
+                # surface; the span guard only applies to well-formed dates.
+                return v
+            if span_days > _MAX_DATE_SPAN_DAYS:
+                raise ValueError(
+                    f"date span is {span_days} days but is capped at "
+                    f"{_MAX_DATE_SPAN_DAYS} (~21 years)"
+                )
         return v
 
 

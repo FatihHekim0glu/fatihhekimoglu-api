@@ -43,8 +43,43 @@ fly deploy
 
 ## Tool roster
 
-| Slug | Router file | Source project |
+Each tool is one router under `api/routers/` wired in `api/main.py`. The table
+below is generated from those `include_router(...)` calls so it can't drift:
+
+```bash
+python scripts/gen_tool_roster.py          # rewrite the table below in place
+python scripts/gen_tool_roster.py --check  # CI guard: fail if stale
+```
+
+<!-- TOOL-ROSTER:START -->
+_26 tools served. Auto-generated from `api/main.py` by `scripts/gen_tool_roster.py` — do not edit by hand._
+
+| Slug | Router file | OpenAPI tag |
 |---|---|---|
-| `stock-dashboard` | `api/routers/stock_dashboard.py` | `~/stock-dashboard/src` |
-| `ma-crossover-backtest` | _(future)_ | `~/ma-crossover-backtest/src` |
-| `markowitz-optimizer` | _(future)_ | `~/markowitz-optimizer/src` |
+| `stock-dashboard` | `api/routers/stock_dashboard.py` | `stock-dashboard` |
+| `markowitz-optimizer` | `api/routers/markowitz_optimizer.py` | `markowitz-optimizer` |
+| `factorlab` | `api/routers/factorlab.py` | `factorlab` |
+| `pairs-trading` | `api/routers/pairs_trading.py` | `pairs-trading` |
+| `ma-crossover-backtest` | `api/routers/ma_crossover_backtest.py` | `ma-crossover-backtest` |
+| `stock-price-forecast` | `api/routers/stock_price_forecast.py` | `stock-price-forecast` |
+| `eigen-portfolios` | `api/routers/eigen_portfolios.py` | `eigen-portfolios` |
+| `hrp-portfolio` | `api/routers/hrp_portfolio.py` | `hrp-portfolio` |
+| `regime-hmm` | `api/routers/regime_hmm.py` | `regime-hmm` |
+| `stock-clusters` | `api/routers/stock_clusters.py` | `stock-clusters` |
+| `lendingclub-default` | `api/routers/lendingclub_default.py` | `lendingclub-default` |
+| `crypto-arb-scanner` | `api/routers/crypto_arb_scanner.py` | `crypto-arb-scanner` |
+| `anomaly-detector` | `api/routers/anomaly_detector.py` | `anomaly-detector` |
+| `lstm-forecast` | `api/routers/lstm_forecast.py` | `lstm-forecast` |
+| `mvts-forecast` | `api/routers/mvts_forecast.py` | `mvts-forecast` |
+| `volforecast` | `api/routers/volforecast.py` | `volforecast` |
+| `wsb-sentiment-signal` | `api/routers/wsb_sentiment.py` | `wsb-sentiment-signal` |
+| `nn-vs-bs` | `api/routers/nn_vs_bs.py` | `nn-vs-bs` |
+| `finbert-sentiment` | `api/routers/finbert_sentiment.py` | `finbert-sentiment` |
+| `edgar-nlp` | `api/routers/edgar_nlp.py` | `edgar-nlp` |
+| `gnn-stocks` | `api/routers/gnn_stocks.py` | `gnn-stocks` |
+| `fed-causal` | `api/routers/fed_causal.py` | `fed-causal` |
+| `rl-trader` | `api/routers/rl_trader.py` | `rl-trader` |
+| `rl-allocator` | `api/routers/rl_allocator.py` | `rl-allocator` |
+| `algo-system` | `api/routers/algo_system.py` | `algo-system` |
+| `rag-10k` | `api/routers/rag_10k.py` | `rag-10k` |
+<!-- TOOL-ROSTER:END -->

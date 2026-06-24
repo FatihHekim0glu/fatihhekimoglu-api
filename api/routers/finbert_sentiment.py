@@ -54,12 +54,18 @@ from ..deps import get_supabase
 from ..lib import finbert_sentiment as _vendor_marker  # noqa: F401
 
 from finbert_sentiment import (  # import resolves via the sys.path shim above
+    LABELS,
     ArtifactError,
     Predictor,
+    SentimentResult,
+    SentimentSummary,
     ValidationError,
+    build_evaluation_figures,
+    load_committed_metrics,
     load_predictor,
     run_sentiment,
 )
+from finbert_sentiment.service import _ci_tuple, _safe_float as _lib_safe_float
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +112,66 @@ def _get_model() -> Predictor:
         _MODEL = load_predictor("distilbert")
         logger.info("finbert-sentiment served model initialized: %s", _MODEL.backend)
         return _MODEL
+
+
+def _run_sentiment_with_predictor(
+    texts: list[str], predictor: Predictor
+) -> SentimentResult:
+    """Assemble a :class:`SentimentResult` reusing an already-built predictor.
+
+    Numerically identical to :func:`finbert_sentiment.run_sentiment`: it runs the
+    same committed-metrics load, the same ``predictor.predict`` forward pass, the
+    same per-class score mapping over the canonical ``LABELS`` order, and the same
+    confusion / per-class-F1 figures built from the committed metrics. The ONLY
+    difference is that the (expensive) ONNX-backed predictor is supplied by the
+    caller — i.e. the process-wide cached :data:`_MODEL` — instead of being
+    rebuilt (which would re-create the ~67MB onnxruntime session) on every
+    request. Inference is deterministic, so reusing the same session yields
+    byte-for-byte the same predictions as a freshly loaded one.
+    """
+    metrics = load_committed_metrics()
+    predictions = predictor.predict(texts)
+
+    labels = list(LABELS)
+    prediction_records = [
+        {
+            "text": p.text,
+            "label": p.label,
+            "scores": {name: _lib_safe_float(p.scores.get(name, 0.0)) for name in labels},
+        }
+        for p in predictions
+    ]
+
+    confusion_fig, f1_fig = build_evaluation_figures(metrics)
+
+    summary = SentimentSummary(
+        served_model=predictor.backend,
+        eval_macro_f1=_lib_safe_float(metrics.get("eval_macro_f1")),
+        eval_macro_f1_ci=_ci_tuple(metrics.get("eval_macro_f1_ci")),
+        eval_accuracy=_lib_safe_float(metrics.get("eval_accuracy")),
+        lexicon_macro_f1=_lib_safe_float(metrics.get("lexicon_macro_f1")),
+        class_prior_macro_f1=_lib_safe_float(metrics.get("class_prior_macro_f1")),
+        beats_lexicon=metrics.get("beats_lexicon"),
+        n_texts=len(prediction_records),
+        data_source=str(metrics.get("data_source", "unknown")),
+        transformer_measured=bool(
+            metrics.get("transformer_published_macro_f1", {}).get(
+                "measured_in_this_build", False
+            )
+        ),
+        notes=str(
+            metrics.get(
+                "notes",
+                "Sentiment is a text label, not a tradable signal — no alpha is claimed.",
+            )
+        ),
+    )
+    return SentimentResult(
+        summary=summary,
+        predictions=prediction_records,
+        confusion_figure=confusion_fig,
+        per_class_f1_figure=f1_fig,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -236,9 +302,15 @@ def run(
     # Eagerly warm the lazy served model so a missing/unreadable artifact surfaces
     # as a clean 502 before we run the (cheap) classification. A request that
     # explicitly asks for the lexicon does not need the cached distilbert model.
+    #
+    # The warmed predictor is captured and THREADED into the run below so the
+    # ~67MB onnxruntime session is built once (process-wide cache) instead of
+    # being rebuilt per request — the previous code warmed _MODEL but then
+    # discarded it, because run_sentiment() builds its own predictor internally.
+    cached_predictor: Predictor | None = None
     if req.model == "distilbert":
         try:
-            _get_model()
+            cached_predictor = _get_model()
         except ArtifactError as exc:
             logger.exception("finbert-sentiment served model artifact load failed")
             _maybe_log_failure(supabase, req, exc)
@@ -255,7 +327,15 @@ def run(
             ) from exc
 
     try:
-        result = run_sentiment(req.texts, model_pref=req.model, seed=int(req.seed))
+        if cached_predictor is not None:
+            # distilbert path: reuse the cached ONNX-backed predictor. Numerically
+            # identical to run_sentiment (same metrics, same forward pass, same
+            # figures) but without rebuilding the onnxruntime session.
+            result = _run_sentiment_with_predictor(req.texts, cached_predictor)
+        else:
+            # lexicon path: cheap, pure-Python, no ONNX session — build per request
+            # exactly as before (the cached predictor is the distilbert one).
+            result = run_sentiment(req.texts, model_pref=req.model, seed=int(req.seed))
     except ValidationError as exc:
         # Should be caught by the request validator, but the library is the
         # authoritative guard — surface a clean 422.
