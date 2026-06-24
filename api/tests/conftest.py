@@ -2,7 +2,7 @@
 
 `client` wraps the FastAPI app via httpx TestClient.
 `synthetic_ohlcv` produces 50 trading days of deterministic OHLCV (seeded
-random walk) for router-level monkeypatching — keeps the suite offline.
+random walk) for router-level monkeypatching - keeps the suite offline.
 
 Vendored-source-test bridge: stock-dashboard's tests import the library
 modules as `from src import indicators` etc. The vendored tree at

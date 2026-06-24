@@ -1,4 +1,4 @@
-"""Vendored copy of stock-dashboard/src — DO NOT EDIT IN PLACE.
+"""Vendored copy of stock-dashboard/src - DO NOT EDIT IN PLACE.
 
 Re-vendor from `~/stock-dashboard/src` if upstream changes.
 

@@ -1,4 +1,4 @@
-"""Markowitz Optimizer × Polygon integration tests.
+"""Markowitz Optimizer and Polygon integration tests.
 
 Exercises the new provider seam: ``get_provider`` is overridden in
 ``app.dependency_overrides`` to inject a stub that satisfies the
@@ -53,7 +53,7 @@ class _StubPolygonProvider(PolygonProvider):
     instance still satisfies ``isinstance(_, PolygonProvider)`` for the
     universe-resolver branch logic."""
 
-    def __init__(self) -> None:  # noqa: D401, B027 — deliberate init-skip
+    def __init__(self) -> None:
         self.calls: list[tuple[str, date, date]] = []
 
     def get_eod(self, ticker: str, start: date, end: date) -> pd.DataFrame:
@@ -72,7 +72,7 @@ class _StubPolygonProvider(PolygonProvider):
 
 
 class _StubFallbackProvider(PolygonProviderFallback):
-    """Fallback variant — surfaces as data_source='yfinance'."""
+    """Fallback variant - surfaces as data_source='yfinance'."""
 
     def __init__(self) -> None:
         super().__init__(supabase_client=None)

@@ -10,11 +10,11 @@ Pipeline
 1. Drop columns whose return series has zero variance (e.g. a stopped ticker).
 2. Z-score each surviving column (column-wise demean, divide by std).
 3. Form the ``N × N`` correlation matrix ``C = (Z^T Z) / T``.
-4. Symmetric eigendecomposition with ``np.linalg.eigh`` — sorted descending.
+4. Symmetric eigendecomposition with ``np.linalg.eigh`` - sorted descending.
 5. Factor returns: ``F = Z @ V`` where ``V`` is the orthonormal eigenvector
    matrix. ``F[:, k]`` is the time series of the ``k``-th principal portfolio.
 
-The function is numpy-pure and deterministic — no I/O, no randomness.
+The function is numpy-pure and deterministic - no I/O, no randomness.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ class EigenResult:
         ``T × N`` DataFrame; column ``k`` is ``Z @ V[:, k]``, i.e. the time
         series of the ``k``-th eigen-portfolio's z-score returns.
     explained_var
-        ``eigvals / eigvals.sum()`` — share of total variance per component.
+        ``eigvals / eigvals.sum()`` - share of total variance per component.
     tickers
         The surviving ticker order after the zero-variance filter.
     """
@@ -70,7 +70,7 @@ def eigen_decompose(returns: pd.DataFrame) -> EigenResult:
     ----------
     returns
         DataFrame indexed by time with one column per ticker. NaN rows should
-        be dropped beforehand — we do not impute.
+        be dropped beforehand - we do not impute.
 
     Returns
     -------

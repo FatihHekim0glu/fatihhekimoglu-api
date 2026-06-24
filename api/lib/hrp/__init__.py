@@ -1,4 +1,4 @@
-"""Vendored copy of hrp-portfolio/src/hrp — DO NOT EDIT IN PLACE.
+"""Vendored copy of hrp-portfolio/src/hrp - DO NOT EDIT IN PLACE.
 
 Re-vendor from `~/projects/hrp-portfolio/src/hrp` if upstream changes.
 

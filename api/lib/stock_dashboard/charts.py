@@ -8,7 +8,7 @@ Opinionated defaults from research:
     normalised so they sum to 1.0.
   - shared_xaxes=True so zoom and pan stay in sync.
   - hovermode='x unified' plus spike lines on the x-axis for synchronised cursor.
-  - rangeslider OFF — it is the single biggest perf killer at 2500 bars
+  - rangeslider OFF - it is the single biggest perf killer at 2500 bars
     because it renders a second candlestick that reflows on every interaction.
     Offer a rangeselector button row (1M / 6M / YTD / 1Y / 5Y / MAX) instead.
   - rangebreaks=[dict(bounds=["sat", "mon"])] to kill the weekend gap on the x-axis.
@@ -20,7 +20,7 @@ Opinionated defaults from research:
     identically to candle increasing/decreasing colours and to volume /
     MACD-histogram bar colours.
   - Bollinger band as a filled region: add upper trace, then lower trace with
-    fill="tonexty" and a low-alpha fillcolor — do NOT draw three opaque lines.
+    fill="tonexty" and a low-alpha fillcolor - do NOT draw three opaque lines.
 """
 
 from __future__ import annotations
@@ -31,8 +31,8 @@ import pandas_market_calendars as mcal
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-_UP = "#00897B"  # Material teal-700, 4.18:1 vs white — passes WCAG AA
-_DOWN = "#C62828"  # Material red-800, 6.36:1 vs white — passes WCAG AA
+_UP = "#00897B"  # Material teal-700, 4.18:1 vs white - passes WCAG AA
+_DOWN = "#C62828"  # Material red-800, 6.36:1 vs white - passes WCAG AA
 _BB_FILL = "rgba(0,137,123,0.12)"  # alpha-blended _UP
 
 # NYSE calendar (XNYS). Reused across calls to avoid re-instantiation cost.
@@ -44,7 +44,7 @@ def _nyse_holiday_dates(start: pd.Timestamp, end: pd.Timestamp) -> list[pd.Times
 
     Without this, weekday holidays (MLK Day, Presidents Day, Good Friday,
     Memorial Day, Juneteenth, July 4, Labor Day, Thanksgiving, Christmas)
-    render as phantom flat gaps in the candlestick chart — ~9 per year.
+    render as phantom flat gaps in the candlestick chart - ~9 per year.
     """
     # `.holidays` is a tuple of numpy.datetime64 in current pandas-market-calendars;
     # wrap in np.asarray so boolean masking works (iter-10 regression fix).
@@ -237,7 +237,7 @@ def build_figure(
                 col=1,
             )
 
-    # Bollinger Bands — only if requested AND all three columns are present
+    # Bollinger Bands - only if requested AND all three columns are present
     if "bb" in requested and {"bb_upper", "bb_middle", "bb_lower"}.issubset(cols):
         fig.add_trace(
             go.Scatter(

@@ -22,7 +22,7 @@ from hrp._exceptions import ValidationError
 def naive_weights(assets: Sequence[str]) -> pd.Series:
     r"""Equal-weight (1/N) portfolio weights.
 
-    Returns :math:`w_i = 1 / N` for each of the ``N`` assets — no covariance, no
+    Returns :math:`w_i = 1 / N` for each of the ``N`` assets - no covariance, no
     mean, no estimation. The result trivially lies on the simplex.
 
     Parameters

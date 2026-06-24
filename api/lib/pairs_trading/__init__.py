@@ -1,6 +1,6 @@
 """Vendored compute modules for the pairs-trading tool.
 
-DO NOT EDIT FILES UNDER `_vendor/` — they are a verbatim copy of
+DO NOT EDIT FILES UNDER `_vendor/` - they are a verbatim copy of
 `pairs-trading/src/pairs/` (upstream package name `pairs`). Re-vendor with
 `cp -r` if upstream changes.
 

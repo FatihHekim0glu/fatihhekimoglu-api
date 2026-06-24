@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
-
 from src import charts
 
 
@@ -47,7 +46,7 @@ def ohlcv_with_indicators() -> pd.DataFrame:
 
 
 class TestSubplotRowCount:
-    """Conditional row layout — 2 to 4 rows depending on requested indicators."""
+    """Conditional row layout - 2 to 4 rows depending on requested indicators."""
 
     def test_no_indicators_yields_two_rows(self, ohlcv_with_indicators):
         fig = charts.build_figure(ohlcv_with_indicators, indicators=())
@@ -84,7 +83,7 @@ class TestTraces:
     def test_macd_renders_all_three_traces(self, ohlcv_with_indicators):
         fig = charts.build_figure(ohlcv_with_indicators, indicators=("macd",))
         names = {t.name for t in fig.data}
-        # macd line, signal line, histogram — three named MACD-related traces.
+        # macd line, signal line, histogram - three named MACD-related traces.
         assert {"MACD", "Signal", "Histogram"}.issubset(names)
 
     def test_bollinger_renders_three_band_traces(self, ohlcv_with_indicators):
@@ -95,7 +94,7 @@ class TestTraces:
 
 class TestGracefulDegradation:
     def test_missing_indicator_columns_are_skipped(self, ohlcv_with_indicators):
-        # Drop the bb_* columns; request "bb" anyway — should NOT raise and
+        # Drop the bb_* columns; request "bb" anyway - should NOT raise and
         # should NOT add band traces.
         df = ohlcv_with_indicators.drop(columns=["bb_upper", "bb_middle", "bb_lower"])
         fig = charts.build_figure(df, indicators=("bb",))

@@ -1,7 +1,7 @@
-"""Markowitz Optimizer tool — wraps the vendored ``markowitz`` library.
+"""Markowitz Optimizer tool - wraps the vendored ``markowitz`` library.
 
 Endpoint:
-  POST /tools/markowitz-optimizer/run — fit estimators, compute efficient
+  POST /tools/markowitz-optimizer/run - fit estimators, compute efficient
   frontier and tangency portfolio, return frontier curve + weights + summary
   + Plotly figure JSON.
 
@@ -40,17 +40,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
 
 from ..deps import get_supabase
+
+# Importing the vendor package side-effects ``sys.path`` so that
+# ``import markowitz`` resolves to the vendored copy. Keep this import even if
+# unused for type-checking purposes.
+from ..lib import markowitz_optimizer as _vendor_marker  # noqa: F401
 from ..lib.polygon.provider import (
     PolygonProvider,
     PolygonProviderFallback,
     make_provider,
 )
 from ..lib.polygon.sp500_universe import SP500UniverseBuilder
-
-# Importing the vendor package side-effects ``sys.path`` so that
-# ``import markowitz`` resolves to the vendored copy. Keep this import even if
-# unused for type-checking purposes.
-from ..lib import markowitz_optimizer as _vendor_marker  # noqa: F401
 
 logger = logging.getLogger(__name__)
 
@@ -177,10 +177,10 @@ class MarkowitzResponse(BaseModel):
     weights: dict[str, float]
     summary: MarkowitzSummary
     frontier_figure: dict[str, Any] = Field(
-        ..., description="Plotly figure JSON: {data, layout} — risk/return scatter."
+        ..., description="Plotly figure JSON: {data, layout} - risk/return scatter."
     )
     weights_figure: dict[str, Any] = Field(
-        ..., description="Plotly figure JSON: {data, layout} — horizontal weights bar."
+        ..., description="Plotly figure JSON: {data, layout} - horizontal weights bar."
     )
     data_source: DataSource
 
@@ -207,13 +207,11 @@ def _parse_ticker_list(tickers: str) -> tuple[str, ...]:
 
 
 # ---------------------------------------------------------------------------
-# Data loading — mirrors app/pages/1_efficient_frontier.py
+# Data loading - mirrors app/pages/1_efficient_frontier.py
 # ---------------------------------------------------------------------------
 
 
-def _synthetic_returns(
-    tickers: tuple[str, ...], start: str, end: str, seed: int
-) -> pd.DataFrame:
+def _synthetic_returns(tickers: tuple[str, ...], start: str, end: str, seed: int) -> pd.DataFrame:
     """Deterministic synthetic returns; identical math to the source page."""
     rng = np.random.default_rng(seed)
     n_assets = len(tickers)
@@ -237,17 +235,17 @@ def _synthetic_returns(
 
 
 def _load_returns(req: MarkowitzRequest) -> tuple[pd.DataFrame, str]:
-    """Legacy yfinance loader — retained for tests / non-provider callers.
+    """Legacy yfinance loader - retained for tests / non-provider callers.
 
     Returns ``(returns_df, data_source)``. Falls back to synthetic on any
     error so the demo still produces a plot when yfinance is unreachable.
     Prefer :func:`_load_returns_via_provider` when a Polygon provider is
-    available — it shares cache with the rest of the platform.
+    available - it shares cache with the rest of the platform.
     """
     tickers = _parse_ticker_list(req.tickers)
     if req.use_real_data:
         try:
-            import yfinance as yf  # noqa: PLC0415 — optional dep guard
+            import yfinance as yf
 
             data = yf.download(
                 list(tickers),
@@ -305,8 +303,7 @@ def _resolve_universe_tickers(
         members.update(members_list)
     if len(members) < 2:
         raise ValueError(
-            "SP500UniverseBuilder returned fewer than 2 members for the "
-            "requested window."
+            "SP500UniverseBuilder returned fewer than 2 members for the requested window."
         )
     return tuple(sorted(members))
 
@@ -346,7 +343,7 @@ def _load_returns_via_provider(
     for ticker in tickers:
         try:
             df = provider.get_eod(ticker, start, end)
-        except Exception as exc:  # noqa: BLE001 — degrade per-ticker
+        except Exception as exc:
             logger.warning(
                 "provider.get_eod(%s) failed (%s); skipping",
                 ticker,
@@ -358,7 +355,7 @@ def _load_returns_via_provider(
         closes[ticker] = df["Close"].astype(float)
 
     if len(closes) < 2:
-        # Not enough tickers came back — fall back to the legacy loader so
+        # Not enough tickers came back - fall back to the legacy loader so
         # we still produce a plot.
         return _load_returns(req)
 
@@ -383,7 +380,7 @@ def _load_returns_via_provider(
 
 def _estimate_cov(returns: pd.DataFrame, method: CovMethod) -> pd.DataFrame:
     """Annualised covariance via the library's estimators."""
-    from markowitz.estimators import LedoitWolfShrinkage, SampleCovariance  # noqa: PLC0415
+    from markowitz.estimators import LedoitWolfShrinkage, SampleCovariance
 
     if method == "LedoitWolf":
         est = LedoitWolfShrinkage(annualize=True, periods_per_year=_TRADING_DAYS)
@@ -401,7 +398,7 @@ def _estimate_mean(
     risk_free_rate: float,
 ) -> pd.Series:
     """Annualised expected returns via the library's estimators."""
-    from markowitz.estimators import (  # noqa: PLC0415
+    from markowitz.estimators import (
         CAPMReturns,
         JorionBayesStein,
         SampleMean,
@@ -426,7 +423,7 @@ def _estimate_mean(
 
 
 def _fallback_frontier(mu: np.ndarray, cov: np.ndarray) -> pd.DataFrame:
-    """Pure-numpy closed-form Merton frontier — kept for the no-cvxpy path."""
+    """Pure-numpy closed-form Merton frontier - kept for the no-cvxpy path."""
     inv = np.linalg.pinv(cov)
     ones = np.ones_like(mu)
     a = float(ones @ inv @ ones)
@@ -441,7 +438,7 @@ def _fallback_frontier(mu: np.ndarray, cov: np.ndarray) -> pd.DataFrame:
 
 
 def _fallback_tangency(mu: np.ndarray, cov: np.ndarray, rf: float) -> np.ndarray:
-    """Pseudo-inverse long-only tangency — graceful degradation when cvxpy is
+    """Pseudo-inverse long-only tangency - graceful degradation when cvxpy is
     unavailable or the QP fails."""
     excess = mu - rf
     raw = np.linalg.pinv(cov) @ excess
@@ -453,25 +450,21 @@ def _fallback_tangency(mu: np.ndarray, cov: np.ndarray, rf: float) -> np.ndarray
     return w / s if s > 0 else np.full_like(mu, 1.0 / len(mu))
 
 
-def _compute_frontier(
-    returns: pd.DataFrame, req: MarkowitzRequest
-) -> dict[str, Any]:
+def _compute_frontier(returns: pd.DataFrame, req: MarkowitzRequest) -> dict[str, Any]:
     """Run the full estimator → AnalyticFrontier → MeanVariance pipeline."""
-    from markowitz.core import AnalyticFrontier  # noqa: PLC0415
-    from markowitz.optimizer import MeanVariance  # noqa: PLC0415
+    from markowitz.core import AnalyticFrontier
+    from markowitz.optimizer import MeanVariance
 
     rf = float(req.risk_free_rate)
 
     cov_df = _estimate_cov(returns, req.cov_method)
-    mu_series = _estimate_mean(
-        returns, req.mean_method, cov=cov_df, risk_free_rate=rf
-    )
+    mu_series = _estimate_mean(returns, req.mean_method, cov=cov_df, risk_free_rate=rf)
 
     mu = mu_series.to_numpy(dtype=float)
     cov = cov_df.to_numpy(dtype=float)
     tickers = list(returns.columns)
 
-    # Frontier — closed-form Merton, falling back to pure numpy if the
+    # Frontier - closed-form Merton, falling back to pure numpy if the
     # analytic factorisation fails (singular covariance, degenerate D).
     try:
         af = AnalyticFrontier(mu, cov)
@@ -483,7 +476,7 @@ def _compute_frontier(
     except Exception:
         frontier_df = _fallback_frontier(mu, cov)
 
-    # Tangency — long-only box [0, max_weight] when long_only is True; for the
+    # Tangency - long-only box [0, max_weight] when long_only is True; for the
     # long-short case we widen to [-max_weight, max_weight].
     if req.long_only:
         bounds: tuple[float | None, float | None] = (0.0, float(req.max_weight))
@@ -510,9 +503,7 @@ def _compute_frontier(
     min_vol_idx = int(frontier_df["volatility"].idxmin())
     vol_series = frontier_df["volatility"].replace(0, np.nan)
     sharpe_series = (frontier_df["expected_return"] - rf) / vol_series
-    max_sharpe_idx = (
-        int(sharpe_series.idxmax()) if sharpe_series.notna().any() else min_vol_idx
-    )
+    max_sharpe_idx = int(sharpe_series.idxmax()) if sharpe_series.notna().any() else min_vol_idx
     frontier_df.loc[min_vol_idx, "label"] = "min_vol"
     frontier_df.loc[max_sharpe_idx, "label"] = "max_sharpe"
 
@@ -521,10 +512,7 @@ def _compute_frontier(
     port_var = float(tan_w @ cov @ tan_w)
     port_vol = float(np.sqrt(max(port_var, 0.0)))
     port_sharpe: float | None
-    if port_vol > 0:
-        port_sharpe = (port_ret - rf) / port_vol
-    else:
-        port_sharpe = None
+    port_sharpe = (port_ret - rf) / port_vol if port_vol > 0 else None
     n_active = int((np.abs(tan_w) > _ACTIVE_WEIGHT_TOL).sum())
 
     weights_map = {t: float(w) for t, w in zip(tickers, tan_w, strict=True)}
@@ -575,8 +563,7 @@ def _frontier_figure(frontier_df: pd.DataFrame) -> go.Figure:
                 marker={"size": 11, "color": _AMBER, "symbol": "diamond"},
                 showlegend=False,
                 hovertemplate=(
-                    f"{row['label']}<br>vol=%{{x:.3%}}<br>"
-                    "ret=%{y:.3%}<extra></extra>"
+                    f"{row['label']}<br>vol=%{{x:.3%}}<br>ret=%{{y:.3%}}<extra></extra>"
                 ),
             )
         )
@@ -648,10 +635,7 @@ def run(
         _maybe_log_failure(supabase, req, exc)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=(
-                "Markowitz optimisation failed: "
-                f"{exc.__class__.__name__}: {exc}"
-            ),
+            detail=(f"Markowitz optimisation failed: {exc.__class__.__name__}: {exc}"),
         ) from exc
 
     frontier_df: pd.DataFrame = result["frontier"]
@@ -672,9 +656,7 @@ def run(
         n_assets=int(summary_raw["n_assets"]),
     )
 
-    weights: dict[str, float] = {
-        k: _safe_float(v) or 0.0 for k, v in result["weights"].items()
-    }
+    weights: dict[str, float] = {k: _safe_float(v) or 0.0 for k, v in result["weights"].items()}
 
     frontier_fig = _frontier_figure(frontier_df)
     weights_fig = _weights_figure(weights)
@@ -699,9 +681,7 @@ def run(
 # ---------------------------------------------------------------------------
 
 
-def _maybe_log_run(
-    supabase, req: MarkowitzRequest, resp: MarkowitzResponse
-) -> None:
+def _maybe_log_run(supabase, req: MarkowitzRequest, resp: MarkowitzResponse) -> None:
     if supabase is None:
         return
     try:
@@ -721,9 +701,7 @@ def _maybe_log_run(
         logger.exception("tool_runs insert failed (non-fatal)")
 
 
-def _maybe_log_failure(
-    supabase, req: MarkowitzRequest, exc: BaseException
-) -> None:
+def _maybe_log_failure(supabase, req: MarkowitzRequest, exc: BaseException) -> None:
     if supabase is None:
         return
     try:

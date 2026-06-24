@@ -1,6 +1,6 @@
 """Sharpe-difference inference: Jobson-Korkie-Memmel + stationary block bootstrap.
 
-The headline question — does HRP's OOS Sharpe beat 1/N's? — is answered with two
+The headline question - does HRP's OOS Sharpe beat 1/N's? - is answered with two
 complementary tools: the Jobson-Korkie (1981) test with Memmel's (2003) correction
 for the asymptotic standard error of the Sharpe difference, and a Politis-Romano
 (1994) stationary block bootstrap that gives a confidence interval on the gap
@@ -196,8 +196,8 @@ def block_bootstrap_sharpe_gap(
     r"""Stationary block-bootstrap confidence interval on the Sharpe gap.
 
     Resamples the two return series JOINTLY (preserving their contemporaneous
-    dependence) using the Politis-Romano (1994) stationary bootstrap — blocks of
-    geometrically-distributed random length — and computes the Sharpe gap on each
+    dependence) using the Politis-Romano (1994) stationary bootstrap - blocks of
+    geometrically-distributed random length - and computes the Sharpe gap on each
     resample to build a percentile confidence interval.
 
     REPRODUCIBILITY: resampling draws from a seeded PCG64 generator

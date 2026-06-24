@@ -4,7 +4,7 @@ Only the max-Sharpe Markowitz allocator needs an expected-return vector; HRP,
 IVP, min-variance, and 1/N are mu-immune. To keep the comparison fair, max-Sharpe
 is fed an explicit James-Stein / grand-mean-shrunk mu (ADR-documented), with the
 naive sample mean exposed as an ablation so the reader can see that it is
-mu-estimation noise — not the allocator — that sinks max-Sharpe.
+mu-estimation noise - not the allocator - that sinks max-Sharpe.
 
 All estimators return a :class:`pandas.Series` of *per-period* expected returns
 labelled by asset. Importing this module has no side effects.

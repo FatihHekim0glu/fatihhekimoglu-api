@@ -5,7 +5,7 @@ Signal convention
 The signal at bar ``t`` is computed from information available up to and
 including the close of bar ``t``. The caller (or engine) is responsible for
 applying ``.shift(1)`` to obtain the *realisable* position held over bar
-``t+1``. This module returns the raw signal — the shift discipline is
+``t+1``. This module returns the raw signal - the shift discipline is
 documented and enforced at the boundary, not buried inside the strategy.
 
 Signal rule
@@ -41,7 +41,7 @@ def generate_signal(close: pd.Series, config: StrategyConfig) -> pd.Series:
 
     Notes
     -----
-    This function reads only ``close[:t+1]`` to compute ``signal[t]`` — it
+    This function reads only ``close[:t+1]`` to compute ``signal[t]`` - it
     does not peek into the future. The no-lookahead property is verified by
     ``tests/test_no_lookahead.py``.
     """

@@ -78,7 +78,7 @@ def sortino_ratio(daily_returns: pd.Series, mar_annual: float = 0.0) -> float:
     """Annualised Sortino ratio (downside deviation in denominator).
 
     Excess return divided by the root-mean-square of negative excess returns
-    (positives zeroed out, still in the average — Bacon Ch. 4). Annualised
+    (positives zeroed out, still in the average - Bacon Ch. 4). Annualised
     by sqrt(252). NaN when downside deviation is effectively zero.
     """
     r = daily_returns.dropna()
@@ -212,7 +212,7 @@ def compute_metrics_table(
     Parameters
     ----------
     equity, daily_returns, positions : pd.Series
-        Equity curve, net daily returns, and position series (0/1) — typically
+        Equity curve, net daily returns, and position series (0/1) - typically
         ``result.equity``, ``result.daily_returns``, ``result.positions``.
     trades : pd.DataFrame
         Trade ledger from ``run_backtest`` (``result.trades``).

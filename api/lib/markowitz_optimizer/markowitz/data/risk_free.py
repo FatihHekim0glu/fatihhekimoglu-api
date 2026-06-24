@@ -107,7 +107,7 @@ def annualize_rate(per_period: pd.Series, frequency: str) -> pd.Series:
 
 
 def constant_rate(value: float, index: pd.DatetimeIndex) -> pd.Series:
-    """Construct a constant-rate series — useful for tests and quick demos."""
+    """Construct a constant-rate series - useful for tests and quick demos."""
     if not math.isfinite(value):
         raise ValueError(f"value must be finite, got {value!r}")
     return pd.Series(value, index=index, name="rf", dtype="float64")

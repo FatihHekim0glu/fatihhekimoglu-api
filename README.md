@@ -1,14 +1,14 @@
 # fatihhekimoglu-api
 
-FastAPI compute backend for the fatihhekimoglu.com tools platform. Wraps existing Python quant projects (`stock-dashboard`, `ma-crossover-backtest`, `markowitz-optimizer`) as HTTP endpoints consumed by the Next.js frontend.
+FastAPI compute backend for the fatihhekimoglu.com tools platform. It wraps a set of Python quant projects as HTTP endpoints that the Next.js frontend calls.
 
 ## Architecture
 
-- **FastAPI** on Python 3.12, served by uvicorn.
+- FastAPI on Python 3.11+, served by uvicorn.
 - One router per tool under `api/routers/`.
-- Vendored compute libraries under `api/lib/` (one subpackage per source project). **Never modify in place** — these are imported byte-for-byte from their source repos.
-- **Supabase Postgres** for shared OHLCV cache (`platform.ohlcv_cache`) and run history (`platform.tool_runs`).
-- Deployed to **Fly.io** at region `lhr`.
+- Vendored compute libraries under `api/lib/`, one subpackage per source project. These are imported byte for byte from their source repos, so do not edit them in place. Re-vendor instead.
+- Supabase Postgres backs a shared OHLCV cache (`platform.ohlcv_cache`) and run history (`platform.tool_runs`). Both are best effort: a Supabase outage degrades caching and logging but never breaks a request.
+- Deployed to Fly.io in region `lhr`.
 
 ## Local dev
 
@@ -18,15 +18,31 @@ cp .env.example .env  # fill in FH_SUPABASE_SERVICE_ROLE_KEY
 uv run uvicorn api.main:app --reload --port 8080
 ```
 
-Health: `curl http://localhost:8080/health`.
+Health check: `curl http://localhost:8080/health`.
 
 ## Tests
 
+The suite is offline by default. Tests that hit live data carry the `network`, `slow` or `integration` markers and are excluded unless you opt in.
+
 ```bash
-uv run pytest                      # default — excludes @network and @slow
-uv run pytest -m network           # hit live yfinance / Stooq
-uv run pytest --cov=api            # with coverage
+uv run pytest                                      # default offline run
+uv run pytest -m network                           # opt in to live yfinance / Stooq
+uv run pytest --cov --cov-report=term-missing      # with coverage
 ```
+
+Coverage is measured on the app layer (routers, config, deps). The vendored
+libraries under `api/lib/` are tested in their own repos and are excluded from
+the coverage gate.
+
+## Lint and types
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy
+```
+
+Ruff and mypy skip `api/lib/`, since the vendored sources are owned upstream.
 
 ## Deploy
 
@@ -83,3 +99,9 @@ _26 tools served. Auto-generated from `api/main.py` by `scripts/gen_tool_roster.
 | `algo-system` | `api/routers/algo_system.py` | `algo-system` |
 | `rag-10k` | `api/routers/rag_10k.py` | `rag-10k` |
 <!-- TOOL-ROSTER:END -->
+
+## Adding a tool
+
+1. Vendor its `src/` under `api/lib/<slug>/`.
+2. Create `api/routers/<slug>.py` with a router named `router`.
+3. Import and include it in `api/main.py`.

@@ -1,6 +1,6 @@
 """Performance statistics for return series.
 
-Annualized volatility, the Sharpe ratio, turnover, and the maximum drawdown —
+Annualized volatility, the Sharpe ratio, turnover, and the maximum drawdown -
 the scalar summaries consumed by the evaluation layer and the API summary block.
 All functions operate on a per-period return series and annualize with
 :data:`hrp._constants.PERIODS_PER_YEAR`.

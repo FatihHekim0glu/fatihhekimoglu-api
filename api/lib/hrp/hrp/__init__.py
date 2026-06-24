@@ -1,7 +1,7 @@
-"""Hierarchical Risk Parity (HRP) — a pure, typed compute library.
+"""Hierarchical Risk Parity (HRP) - a pure, typed compute library.
 
-From-scratch implementation of Lopez de Prado's HRP (2016) — tree clustering,
-quasi-diagonalization, recursive bisection — benchmarked honestly out-of-sample
+From-scratch implementation of Lopez de Prado's HRP (2016) - tree clustering,
+quasi-diagonalization, recursive bisection - benchmarked honestly out-of-sample
 against Markowitz (min-variance + max-Sharpe), inverse-variance (IVP), and the
 DeMiguel 1/N naive portfolio under realistic transaction costs and estimation
 error.

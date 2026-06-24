@@ -1,4 +1,4 @@
-"""Eigen Portfolios unit tests — all offline, all deterministic."""
+"""Eigen Portfolios unit tests - all offline, all deterministic."""
 
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ from api.lib.eigen_portfolios import (
     fit_sigma,
     marchenko_pastur_bulk,
 )
-from api.lib.polygon.provider import PolygonProvider, PolygonProviderFallback
 from api.routers import eigen_portfolios as router_mod
 
 pytestmark = pytest.mark.unit
@@ -102,7 +101,7 @@ def test_factor_returns_orthogonal() -> None:
 
 def test_eigen_decompose_drops_zero_variance_columns() -> None:
     panel = _synthetic_returns(n_market=5, n_sector_a=5, n_sector_b=5)
-    # Add a constant column — should be silently dropped.
+    # Add a constant column - should be silently dropped.
     panel = panel.copy()
     panel["CONST"] = 0.0
     result = eigen_decompose(panel)
@@ -151,7 +150,7 @@ def test_fit_sigma_no_signal_is_mean() -> None:
 
 
 class _StubProvider:
-    """Stand-in for PolygonProvider — returns synthetic OHLCV per ticker."""
+    """Stand-in for PolygonProvider - returns synthetic OHLCV per ticker."""
 
     def __init__(self, panel: pd.DataFrame) -> None:
         # ``panel`` is a wide DataFrame of returns indexed by date; we convert
@@ -173,19 +172,17 @@ class _StubProvider:
         return None
 
 
-def test_run_endpoint_with_synthetic_data(
-    client, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_run_endpoint_with_synthetic_data(client, monkeypatch: pytest.MonkeyPatch) -> None:
     """Three structural factors → top-3 eigenvalues sit well above the MP bulk."""
     panel = _synthetic_returns(t_obs=600, n_market=10, n_sector_a=8, n_sector_b=8)
     stub = _StubProvider(panel)
 
-    def fake_make_provider(supabase_client: Any = None) -> Any:  # noqa: ARG001
+    def fake_make_provider(supabase_client: Any = None) -> Any:
         return stub
 
     monkeypatch.setattr(router_mod, "make_provider", fake_make_provider)
     # Sidestep the PolygonProvider/Fallback isinstance branches by using a
-    # custom universe — exercises the same code path without grouped-daily.
+    # custom universe - exercises the same code path without grouped-daily.
     monkeypatch.setattr(router_mod, "PolygonProvider", _StubProvider)
     monkeypatch.setattr(router_mod, "PolygonProviderFallback", type("_NotMe", (), {}))
 
@@ -209,12 +206,10 @@ def test_run_endpoint_with_synthetic_data(
     assert body["rmt_bulk"]["lambda_max"] > body["rmt_bulk"]["lambda_min"] >= 0.0
 
 
-def test_run_endpoint_rejects_tiny_custom_universe(
-    client, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_run_endpoint_rejects_tiny_custom_universe(client, monkeypatch: pytest.MonkeyPatch) -> None:
     stub = _StubProvider(_synthetic_returns(t_obs=100, n_market=1, n_sector_a=0, n_sector_b=0))
 
-    def fake_make_provider(supabase_client: Any = None) -> Any:  # noqa: ARG001
+    def fake_make_provider(supabase_client: Any = None) -> Any:
         return stub
 
     monkeypatch.setattr(router_mod, "make_provider", fake_make_provider)

@@ -55,9 +55,9 @@ def test_run_success_with_synthetic_data(
     synthetic_ohlcv: pd.DataFrame,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """End-to-end happy path: 50 synthetic bars → 200 with figure + summary.
+    """End-to-end happy path: 50 synthetic bars to a figure plus summary.
 
-    `summary.trading_days` should be 49 (n − 1 daily returns from 50 closes).
+    `summary.trading_days` should be 49 (n - 1 daily returns from 50 closes).
     """
 
     def _fake_fetch(ticker: str, start: Any, end: Any) -> pd.DataFrame:

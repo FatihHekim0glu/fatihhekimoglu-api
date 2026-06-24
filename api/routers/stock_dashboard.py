@@ -1,8 +1,8 @@
-"""Stock Dashboard tool — wraps stock-dashboard's src/ unchanged.
+"""Stock Dashboard tool - wraps stock-dashboard's src/ unchanged.
 
 Endpoints:
-  GET  /tools/stock-dashboard/anchor — NYSE-today + market state for the React form
-  POST /tools/stock-dashboard/run    — fetch + indicators + stats + Plotly figure JSON
+  GET  /tools/stock-dashboard/anchor - NYSE-today + market state for the React form
+  POST /tools/stock-dashboard/run    - fetch + indicators + stats + Plotly figure JSON
 
 Caching:
   - Per-(symbol, date) OHLCV rows in platform.ohlcv_cache (shared across tools).
@@ -74,7 +74,7 @@ class AnchorResponse(BaseModel):
 
     today_nyse: date = Field(..., description="NYSE-local today (ISO).")
     min_date: date = Field(date(1970, 1, 1))
-    default_start: date = Field(..., description="today_nyse − 5y, the source's default.")
+    default_start: date = Field(..., description="today_nyse minus 5y, the source's default.")
     market_is_open: bool = Field(..., description="True before today's NYSE close.")
     trading_day_stamp: str = Field(..., description="Cache-key stamp; flips at NYSE close.")
 
@@ -156,7 +156,7 @@ def _safe_float(value: float) -> float | None:
 def anchor() -> AnchorResponse:
     """Return NYSE-local anchors so the client form doesn't need pandas-market-calendars.
 
-    The source's `app.py:154` uses `datetime.now(ZoneInfo("America/New_York")).date()` —
+    The source's `app.py:154` uses `datetime.now(ZoneInfo("America/New_York")).date()` -
     we mirror that exactly.
     """
     from zoneinfo import ZoneInfo
@@ -165,6 +165,7 @@ def anchor() -> AnchorResponse:
     today_ny = datetime.now(ny).date()
     return AnchorResponse(
         today_nyse=today_ny,
+        min_date=date(1970, 1, 1),
         default_start=today_ny - timedelta(days=5 * 365),
         market_is_open=data._market_is_open_now(),
         trading_day_stamp=data.trading_day_stamp(),
@@ -193,7 +194,7 @@ def run(
             detail=f"end_date {req.end_date.isoformat()} is after NYSE today ({today_ny.isoformat()})",
         )
 
-    # Fetch — yfinance with Stooq fallback. The vendored data.fetch_ohlcv does
+    # Fetch - yfinance with Stooq fallback. The vendored data.fetch_ohlcv does
     # all the heavy lifting (retries, intraday bypass, diskcache, normalize).
     try:
         df = data.fetch_ohlcv(req.ticker, req.start_date, req.end_date)
@@ -218,7 +219,7 @@ def run(
     # Optionally upsert into Supabase ohlcv_cache (best-effort, never block).
     _maybe_upsert_ohlcv(supabase, req.ticker, df, source="yfinance")
 
-    # Indicators — replicates stock-dashboard/app.py:78-99 exactly.
+    # Indicators - replicates stock-dashboard/app.py:78-99 exactly.
     df = df.copy()
     close = df["Close"]
     selected = set(req.indicators)
@@ -243,7 +244,7 @@ def run(
         df["macd_signal"] = macd_df["signal"]
         df["macd_hist"] = macd_df["histogram"]
 
-    # Stats — pure function of close + rf.
+    # Stats - pure function of close + rf.
     try:
         summary = stats.summary(close, rf_annual=req.rf_annual)
     except ValueError as exc:
@@ -252,7 +253,7 @@ def run(
             detail=str(exc),
         ) from exc
 
-    # Figure — tag set translated from labels (mirrors app.py:121-133).
+    # Figure - tag set translated from labels (mirrors app.py:121-133).
     indicator_tags = tuple(_LABEL_TO_TAG[lbl] for lbl in req.indicators if lbl in _LABEL_TO_TAG)
     fig = charts.build_figure(df, indicators=indicator_tags, candlestick=req.candlestick)
     # plotly.io.to_json handles numpy ndarrays and NaN/Inf natively; we then
@@ -291,7 +292,7 @@ def run(
 def _maybe_upsert_ohlcv(supabase, ticker: str, df: pd.DataFrame, source: str) -> None:
     """Best-effort upsert of OHLCV rows to platform.ohlcv_cache.
 
-    Silent failure is intentional — the cache is a perf optimisation, not a
+    Silent failure is intentional - the cache is a perf optimisation, not a
     correctness primitive. A Supabase outage must not break the dashboard.
     """
     if supabase is None or df.empty:

@@ -31,7 +31,7 @@ def sample_cov(returns: ReturnsLike, *, ddof: int = 1) -> pd.DataFrame:
 
     HONESTY REQUIREMENT: with ``T <= N`` (fewer observations than assets) the
     sample covariance is rank-deficient and singular; this estimator does NOT
-    repair that — it is the deliberately fragile baseline that motivates
+    repair that - it is the deliberately fragile baseline that motivates
     shrinkage. Use :func:`ledoit_wolf_cov` for the well-conditioned default.
 
     Parameters
@@ -77,7 +77,7 @@ def ledoit_wolf_cov(returns: ReturnsLike) -> pd.DataFrame:
     result is well-conditioned even when ``T <= N``.
 
     NO-LOOKAHEAD REQUIREMENT: the shrinkage intensity :math:`\delta` must be a
-    pure deterministic function of the in-sample window only — it is asserted to
+    pure deterministic function of the in-sample window only - it is asserted to
     be future-perturbation-invariant in the property suite.
 
     Validated against ``sklearn.covariance.ledoit_wolf`` to ``1e-10`` in the

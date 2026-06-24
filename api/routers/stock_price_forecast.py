@@ -1,4 +1,4 @@
-"""Stock Price Forecast tool — wraps the vendored LSTM+Attention pipeline.
+"""Stock Price Forecast tool - wraps the vendored LSTM+Attention pipeline.
 
 Endpoint:
   POST /tools/stock-price-forecast/run
@@ -13,7 +13,7 @@ Pipeline (single-shot synchronous; v1 acceptance):
 Notes:
   - Long-running: yfinance pull (~2-10s) + sequential model.predict calls
     (~100-300ms each on CPU). A 30-day forecast can take 10-30s; v1 just
-    blocks the request — clients should set a generous timeout.
+    blocks the request - clients should set a generous timeout.
   - The Keras model + 14-feature MinMaxScaler are not exposed to the wire;
     only dates + price arrays go over JSON.
 """
@@ -45,7 +45,7 @@ router = APIRouter(prefix="/tools/stock-price-forecast", tags=["stock-price-fore
 
 _TICKER_RE = re.compile(r"^[A-Z0-9.\-]{1,15}$")
 # How many trailing history bars to send back to the client for plotting
-# context. The full 2010..today series is ~3500 rows — too chunky for JSON.
+# context. The full 2010..today series is ~3500 rows - too chunky for JSON.
 _HISTORY_TAIL = 250
 
 
@@ -119,9 +119,7 @@ def _safe_float(value: float | None) -> float | None:
     return f
 
 
-def _build_history_figure(
-    ticker: str, dates: list[str], close: list[float]
-) -> dict[str, Any]:
+def _build_history_figure(ticker: str, dates: list[str], close: list[float]) -> dict[str, Any]:
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -133,13 +131,14 @@ def _build_history_figure(
         )
     )
     fig.update_layout(
-        title=f"{ticker} — Historical Close (since 2010)",
+        title=f"{ticker} - Historical Close (since 2010)",
         xaxis_title="Date",
         yaxis_title="Close (USD)",
         template="plotly_white",
         showlegend=False,
     )
-    return json.loads(pio.to_json(fig, validate=False))
+    payload: dict[str, Any] = json.loads(pio.to_json(fig, validate=False))
+    return payload
 
 
 def _build_forecast_figure(
@@ -187,13 +186,14 @@ def _build_forecast_figure(
         )
     )
     fig.update_layout(
-        title=f"{ticker} — Next {len(fcst_dates)}-day forecast",
+        title=f"{ticker} - Next {len(fcst_dates)}-day forecast",
         xaxis_title="Date",
         yaxis_title="Close (USD)",
         template="plotly_white",
         legend={"orientation": "h", "y": -0.18},
     )
-    return json.loads(pio.to_json(fig, validate=False))
+    payload: dict[str, Any] = json.loads(pio.to_json(fig, validate=False))
+    return payload
 
 
 # ---------------------------------------------------------------------------
