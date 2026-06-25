@@ -54,7 +54,7 @@ class ForecastSummary:
         Name of the lowest-RMSE model overall.
     deep_beats_naive:
         The PURE verdict: ``True`` iff a deep model beats naive with a
-        DM-significant margin AND a positive DSR.
+        DM-significant margin AND a DSR >= 0.95 (1 - alpha).
     n_effective_trials:
         The honest multiplicity count used for the DSR.
     data_source:
@@ -176,11 +176,20 @@ def run_forecast(
     naive = forecasts["naive"]
     best_dm_stat, best_dm_pvalue, best_deep, best_deep_dsr = 0.0, 1.0, "", 0.0
 
+    # Honest cross-trial variance ``V`` for the DSR benchmark: the REAL sample
+    # variance (ddof=1) of the per-observation Sharpe ratios of the models
+    # ACTUALLY served and compared this request (naive + arima + whichever deep
+    # artifacts are present). This replaces the fabricated ``1 / n_obs`` heuristic
+    # and carries the same per-observation units as each observed Sharpe the DSR
+    # deflates; with < 2 finite trial Sharpes quantcore's helper returns ``0.0``
+    # (the single-series fallback → plain PSR-against-zero).
+    v_trials = _trial_variance(test_returns, forecasts)
+
     for model in _ordered(forecasts):
         pred = forecasts[model]
         rmse_by_model[model] = rmse(test_returns, pred)
         directional_acc_by_model[model], _ = directional_accuracy(test_returns, pred)
-        deflated_sharpe[model] = _model_dsr(test_returns, pred)
+        deflated_sharpe[model] = _model_dsr(test_returns, pred, v_trials)
         if model == "naive":
             dm_pvalue_vs_naive[model] = 1.0
             continue
@@ -416,28 +425,49 @@ def _serve_deep(
     return out
 
 
-def _model_dsr(y_true: FloatArray, y_pred: FloatArray) -> float:
+def _trial_variance(y_true: FloatArray, forecasts: dict[str, FloatArray]) -> float:
+    """Honest cross-trial variance ``V`` from the served models' Sharpe ratios.
+
+    Computes the REAL sample variance (ddof=1) of the per-observation
+    net-of-cost Sharpe ratios of every model served and compared this request
+    (the trials actually run), via :func:`quantcore.variance_of_trial_sharpes`.
+    With fewer than two finite trial Sharpes the helper returns ``0.0`` (the
+    documented single-series fallback, collapsing the DSR benchmark to plain
+    PSR-against-zero). This is the honest ``V`` input the Deflated-Sharpe
+    benchmark needs — never a ``1 / n_obs`` heuristic.
+    """
+    from mvtsforecast.evaluation.dsr import variance_of_trial_sharpes
+    from mvtsforecast.evaluation.metrics import net_pnl_sharpe
+
+    trial_sharpes = [net_pnl_sharpe(y_true, pred) for pred in forecasts.values()]
+    return variance_of_trial_sharpes(trial_sharpes)
+
+
+def _model_dsr(
+    y_true: FloatArray,
+    y_pred: FloatArray,
+    variance_of_trial_sharpes: float,
+) -> float:
     """Deflated Sharpe of a model's sign-following net PnL (FULL-grid n_trials).
 
     The DSR deflates the model's per-observation net-of-cost Sharpe against the
-    multiplicity-inflated benchmark with ``_N_EFFECTIVE_TRIALS`` trials. On the
+    multiplicity-inflated benchmark with ``_N_EFFECTIVE_TRIALS`` trials and the
+    HONEST cross-trial variance ``V`` (the real variance of the served models'
+    Sharpe ratios, computed once per request by :func:`_trial_variance`). On the
     synthetic null the net Sharpe hugs zero, so the DSR is ~0 — the honest result.
     """
+    import numpy as np
+
     from mvtsforecast.evaluation.dsr import deflated_sharpe_ratio
     from mvtsforecast.evaluation.metrics import net_pnl_sharpe
 
     sharpe = net_pnl_sharpe(y_true, y_pred)
-    # A small, non-zero cross-trial variance keeps the DSR benchmark finite; with
-    # the honest near-zero Sharpe the DSR still lands near 0.5 (P(SR>benchmark))
-    # and never exceeds it, so it cannot push the verdict to True on the null.
-    import numpy as np
-
     n_obs = int(np.asarray(y_true).size)
     return deflated_sharpe_ratio(
         sharpe,
         n_obs=n_obs,
         n_trials=_N_EFFECTIVE_TRIALS,
-        variance_of_trial_sharpes=1.0 / max(n_obs, 2),
+        variance_of_trial_sharpes=variance_of_trial_sharpes,
     )
 
 

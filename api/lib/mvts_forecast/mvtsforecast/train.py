@@ -156,7 +156,10 @@ def train_pipeline(
     from mvtsforecast._manifest import RunManifest
     from mvtsforecast.data.synthetic import synthetic_panel
     from mvtsforecast.evaluation.diebold_mariano import diebold_mariano
-    from mvtsforecast.evaluation.dsr import deflated_sharpe_ratio
+    from mvtsforecast.evaluation.dsr import (
+        deflated_sharpe_ratio,
+        variance_of_trial_sharpes,
+    )
     from mvtsforecast.evaluation.metrics import (
         directional_accuracy,
         net_pnl_sharpe,
@@ -242,8 +245,24 @@ def train_pipeline(
             "net_pnl_sharpe": float(sharpe),
         }
 
-    # Honest multiplicity: #architectures explored over the fixed HP grid.
+    # Honest multiplicity: #architectures explored over the fixed HP grid. Phase 1
+    # confirmed exactly ONE config is trained per architecture, so the trial count
+    # is the number of models compared — never a fabricated grid.
     n_effective_trials = len(_DEEP_MODELS)
+    n_test = int(y_test.size)
+
+    # Honest cross-trial variance ``V``: the REAL sample variance (ddof=1) of the
+    # per-observation Sharpe ratios of the models actually scored and compared
+    # (naive + every deep model). This replaces the fabricated ``1 / n_obs``
+    # heuristic; ``V`` carries the SAME per-observation units as each observed
+    # Sharpe the DSR deflates. With < 2 finite trial Sharpes quantcore's helper
+    # returns ``0.0`` (the documented single-series fallback, collapsing the DSR
+    # benchmark to plain PSR-against-zero).
+    trial_sharpes = [
+        net_pnl_sharpe(y_test, pred)
+        for pred in (naive_pred, *deep_forecasts.values())
+    ]
+    v_trials = variance_of_trial_sharpes(trial_sharpes)
 
     # Derive the PURE verdict from the best (lowest-loss) deep model vs naive.
     best_dm_stat, best_dm_pvalue, best_deep, best_dsr = 0.0, 1.0, "", 0.0
@@ -252,12 +271,11 @@ def train_pipeline(
             dm_stat, dm_pvalue = diebold_mariano(y_test, pred, naive_pred)
         except ValidationError:  # pragma: no cover - defensive: degenerate diff
             dm_stat, dm_pvalue = 0.0, 1.0
-        n_test = int(y_test.size)
         dsr = deflated_sharpe_ratio(
             net_pnl_sharpe(y_test, pred),
             n_obs=n_test,
             n_trials=n_effective_trials,
-            variance_of_trial_sharpes=1.0 / max(n_test, 2),
+            variance_of_trial_sharpes=v_trials,
         )
         metrics[model_name]["dm_pvalue_vs_naive"] = float(dm_pvalue)
         metrics[model_name]["deflated_sharpe"] = float(dsr)
@@ -268,9 +286,9 @@ def train_pipeline(
     metrics["naive"]["deflated_sharpe"] = float(
         deflated_sharpe_ratio(
             net_pnl_sharpe(y_test, naive_pred),
-            n_obs=int(y_test.size),
+            n_obs=n_test,
             n_trials=n_effective_trials,
-            variance_of_trial_sharpes=1.0 / max(int(y_test.size), 2),
+            variance_of_trial_sharpes=v_trials,
         )
     )
 

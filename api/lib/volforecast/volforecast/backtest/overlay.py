@@ -15,6 +15,7 @@ headline. Importing this module has no side effects.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -84,6 +85,7 @@ def vol_target_overlay(
     max_leverage: float = 2.0,
     cost_bps: float = 10.0,
     n_trials: int = 1,
+    trial_sharpes: Sequence[float] | np.ndarray | None = None,
 ) -> OverlayResult:
     r"""Run a vol-targeting overlay driven by a one-step volatility forecast.
 
@@ -115,6 +117,19 @@ def vol_target_overlay(
     n_trials:
         The TRUE number of model-overlay configurations evaluated, for the
         Deflated Sharpe (``>= 1``).
+    trial_sharpes:
+        The **per-observation** Sharpe ratios of the configurations actually
+        scored in the horse race (one per trial; e.g. the per-obs overlay Sharpe
+        of every GARCH/EGARCH/GJR/HAR/XGBoost model run). When two or more finite
+        values are given, the Deflated-Sharpe cross-trial variance ``V`` is the
+        REAL :func:`quantcore.variance_of_trial_sharpes` of those Sharpes (in the
+        SAME per-observation units as ``observed_sharpe``). When ``None`` (or
+        fewer than two finite values - the single-series case), ``V`` falls back
+        to the analytic single-series proxy
+        :func:`quantcore.expected_sharpe_variance` ``(1 + SR^2/2)/n_obs`` - never
+        a hardcoded constant. The former hardcoded ``V = 1.0`` was in per-obs SR
+        units (an annualized SR of ~16), which over-deflated and pinned the DSR
+        near zero for any ``n_trials > 1``.
 
     Returns
     -------
@@ -129,7 +144,11 @@ def vol_target_overlay(
     """
     from volforecast._exceptions import ValidationError
     from volforecast._validation import ensure_series
-    from volforecast.evaluation.dsr import deflated_sharpe_ratio
+    from volforecast.evaluation.dsr import (
+        deflated_sharpe_ratio,
+        expected_sharpe_variance,
+        variance_of_trial_sharpes,
+    )
 
     if not (np.isfinite(target_vol) and target_vol > 0.0):
         raise ValidationError(f"target_vol must be a positive finite float, got {target_vol!r}.")
@@ -189,14 +208,26 @@ def vol_target_overlay(
     per_obs_sharpe = sharpe / np.sqrt(_ANNUALIZATION)
     n_obs = int(net.shape[0])
     skew, kurt = _sample_skew_kurtosis(net)
-    # With a single configuration the variance of trial Sharpes is unknown; use a
-    # conservative unit variance so the multiplicity benchmark is non-trivial when
-    # ``n_trials > 1`` (the honest deflation), collapsing to the plain PSR at N=1.
+
+    # HONEST cross-trial variance ``V`` (the former ``V = 1.0`` bug). ``V`` must be
+    # in the SAME per-observation Sharpe units as ``per_obs_sharpe``:
+    #   * when the caller supplies the per-obs Sharpes of the >= 2 configurations
+    #     actually scored, ``V`` is their REAL sample cross-trial variance;
+    #   * otherwise (the single-series sensitivity check) ``V`` falls back to the
+    #     analytic single-series proxy ``(1 + SR^2/2)/n_obs`` - both are tiny,
+    #     per-obs-scale quantities, NOT the absurd unit variance that pinned the
+    #     DSR to zero for any ``n_trials > 1``.
+    if trial_sharpes is not None:
+        v_trials = variance_of_trial_sharpes(np.asarray(trial_sharpes, dtype="float64"))
+    else:
+        v_trials = 0.0
+    variance_v = v_trials if v_trials > 0.0 else expected_sharpe_variance(per_obs_sharpe, n_obs)
+
     deflated = deflated_sharpe_ratio(
         per_obs_sharpe,
         n_obs=n_obs,
         n_trials=int(n_trials),
-        variance_of_trial_sharpes=1.0,
+        variance_of_trial_sharpes=variance_v,
         skew=skew,
         kurtosis=kurt,
     )
@@ -214,6 +245,7 @@ def vol_target_overlay(
             "max_leverage": float(max_leverage),
             "cost_bps": float(cost_bps),
             "n_obs": n_obs,
+            "variance_of_trial_sharpes": float(variance_v),
         },
     )
 

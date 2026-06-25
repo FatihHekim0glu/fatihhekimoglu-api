@@ -1,4 +1,4 @@
-"""volforecast — GARCH vs ML for realized-volatility forecasting (honest null).
+"""volforecast - GARCH vs ML for realized-volatility forecasting (honest null).
 
 A pure, typed compute library that forecasts the h-day-ahead realized volatility
 of an index and honestly tests whether XGBoost (or a research-only LSTM) beats a
@@ -6,7 +6,7 @@ well-specified GARCH(1,1) / HAR-RV out-of-sample. Evaluation is QLIKE (robust to
 the noisy RV proxy) plus Diebold-Mariano and Hansen-SPA significance, so the
 ``best_model`` / ``ml_beats_garch`` verdict is a PURE function of the evidence.
 
-Honest headline (Hansen & Lunde 2005): GARCH(1,1)/HAR-RV are HARD to beat — ML
+Honest headline (Hansen & Lunde 2005): GARCH(1,1)/HAR-RV are HARD to beat - ML
 wins only marginally on OOS QLIKE, if at all, and the LSTM rarely justifies its
 cost. The default run is on a synthetic GARCH(1,1)-like series, so the null holds
 by construction.
@@ -62,7 +62,10 @@ from volforecast.data import (
 )
 from volforecast.evaluation.dsr import (
     deflated_sharpe_ratio,
+    effective_n_trials,
+    expected_sharpe_variance,
     probabilistic_sharpe_ratio,
+    variance_of_trial_sharpes,
 )
 from volforecast.evaluation.qlike import mse, qlike, qlike_loss_series
 from volforecast.evaluation.tests import (
@@ -179,12 +182,15 @@ __all__ = [
     "deflated_sharpe_ratio",
     "derive_verdict",
     "diebold_mariano",
+    "effective_n_trials",
+    "expected_sharpe_variance",
     "hansen_spa",
     "mse",
     "newey_west_lrv",
     "probabilistic_sharpe_ratio",
     "qlike",
     "qlike_loss_series",
+    "variance_of_trial_sharpes",
     # backtest overlay
     "FixedBpsCost",
     "OverlayResult",

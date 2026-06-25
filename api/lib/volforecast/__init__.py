@@ -11,12 +11,23 @@ CONTAINER GUARANTEE: importing ``volforecast`` (or the serve-path ``pipeline``)
 pulls in NO TensorFlow — the research-only LSTM (``volforecast.ml.lstm``) is
 never re-exported by ``volforecast/__init__.py``, ``volforecast.ml.__init__``,
 or ``volforecast.pipeline``, so the serve path can never import it.
+
+DEPENDENCY: the vendored ``volforecast`` now imports the shared ``quantcore``
+kernel — ``volforecast.evaluation.dsr`` re-exports DSR/PSR + the honest-V helpers
+and ``volforecast.evaluation.tests`` re-exports ``newey_west_lrv`` from quantcore,
+and ``volforecast.__init__`` imports both on load. We therefore register the
+vendored ``quantcore`` source tree onto ``sys.path`` FIRST so ``import quantcore``
+resolves before any ``volforecast`` import triggers it (mirrors api/lib/regime_hmm).
 """
 
 from __future__ import annotations
 
 import sys as _sys
 from pathlib import Path as _Path
+
+# Register the vendored quantcore path before volforecast so its
+# ``from quantcore import ...`` re-exports resolve on first import.
+from .. import quantcore as _quantcore_vendor  # noqa: F401
 
 _VENDOR_DIR = _Path(__file__).resolve().parent
 _VENDOR_PATH = str(_VENDOR_DIR)

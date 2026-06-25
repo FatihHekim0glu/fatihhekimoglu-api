@@ -10,7 +10,7 @@ correlated and that comparing many models inflates the chance of a spurious
   correction applied).
 - **Hansen SPA** (2005): a test of the COMPOSITE null that NO model in the
   candidate set beats the benchmark, via a studentized-maximum statistic and a
-  stationary bootstrap — this is the multiple-testing guard that stops us crowning
+  stationary bootstrap - this is the multiple-testing guard that stops us crowning
   ML a winner by data snooping. If ``arch`` is installed its
   :class:`arch.bootstrap.SPA` is used; otherwise a self-contained fallback runs.
 
@@ -28,14 +28,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+from quantcore import ValidationError as _QuantCoreValidationError
+from quantcore.hac import newey_west_lrv as _qc_newey_west_lrv
 
 from volforecast._exceptions import ValidationError
 from volforecast._rng import make_rng
-
-
-def _andrews_lag(n: int) -> int:
-    """Andrews (1991) automatic Bartlett lag ``ceil(4 (T/100)^{2/9})``."""
-    return int(np.ceil(4.0 * (n / 100.0) ** (2.0 / 9.0)))
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,14 +110,20 @@ class SPAResult:
 def newey_west_lrv(x: NDArray[np.float64], *, lag: int | None = None) -> float:
     r"""Newey-West (1987) Bartlett long-run variance of a 1-D series.
 
+    MIGRATED TO ``quantcore``: thin re-export of :func:`quantcore.hac.newey_west_lrv`
+    (the kernel - same Bartlett weights and Andrews (1991) automatic lag
+    ``L = ceil(4 (T/100)^{2/9})`` - is byte-identical to the former local
+    implementation; parity verified to 0.0). Used as the denominator of the DM
+    statistic so it is valid under autocorrelated loss differentials.
+
     .. math::
 
         \widehat{\omega} = \gamma_0 + 2\sum_{h=1}^{L}
-                            \left(1 - \tfrac{h}{L+1}\right)\gamma_h,
+                            \left(1 - \tfrac{h}{L+1}\right)\gamma_h.
 
-    with the Andrews (1991) automatic lag ``L = ceil(4 (T/100)^{2/9})`` when
-    ``lag`` is ``None``. Used as the denominator of the DM statistic so it is
-    valid under autocorrelated loss differentials.
+    The only adaptation is the exception TYPE: a failed precondition is surfaced
+    as :class:`volforecast._exceptions.ValidationError` (with the identical
+    message) rather than ``quantcore``'s own ``ValidationError``.
 
     Parameters
     ----------
@@ -139,24 +142,10 @@ def newey_west_lrv(x: NDArray[np.float64], *, lag: int | None = None) -> float:
     ValidationError
         If ``x`` has fewer than two finite observations or ``lag < 0``.
     """
-    arr = np.asarray(x, dtype="float64").ravel()
-    arr = arr[np.isfinite(arr)]
-    if arr.shape[0] < 2:
-        raise ValidationError("newey_west_lrv requires at least two finite observations.")
-    if lag is not None and lag < 0:
-        raise ValidationError(f"newey_west_lrv requires lag >= 0, got {lag}.")
-
-    n = int(arr.shape[0])
-    truncation = _andrews_lag(n) if lag is None else int(lag)
-    centred = arr - arr.mean()
-    gamma0 = float(np.dot(centred, centred) / n)
-    omega = gamma0
-    max_lag = min(truncation, n - 1)
-    for h in range(1, max_lag + 1):
-        weight = 1.0 - h / (truncation + 1.0)
-        gamma_h = float(np.dot(centred[h:], centred[:-h]) / n)
-        omega += 2.0 * weight * gamma_h
-    return max(omega, 0.0)
+    try:
+        return _qc_newey_west_lrv(x, lag=lag)
+    except _QuantCoreValidationError as exc:
+        raise ValidationError(str(exc)) from exc
 
 
 def diebold_mariano(

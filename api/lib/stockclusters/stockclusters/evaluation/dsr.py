@@ -1,99 +1,41 @@
 """Probabilistic and Deflated Sharpe ratios (Bailey & Lopez de Prado, 2014).
 
 These overfitting guards adjust a realized Sharpe ratio for sample length,
-non-normality (skew and kurtosis), and — for the Deflated Sharpe — the number of
+non-normality (skew and kurtosis), and - for the Deflated Sharpe - the number of
 configurations tried (multiple-testing / selection bias). The Deflated Sharpe is
 the honest yardstick that counts the FULL configuration grid as ``n_trials``.
+
+MIGRATED to the shared ``quantcore`` package: the PSR/DSR kernels here are
+byte-identical to ``quantcore.probabilistic_sharpe_ratio`` /
+``quantcore.deflated_sharpe_ratio`` (the Acklam ``_norm_ppf`` + ``erf`` form,
+validated to 1e-8 against ``scipy.stats.norm`` in the parity suite). Rather than
+maintain a second copy that can drift, these public names are thin wrappers over
+quantcore that translate ``quantcore.ValidationError`` into this package's own
+:class:`stockclusters._exceptions.ValidationError` with IDENTICAL messages (the
+two packages have no shared exception ancestry, so callers that ``except
+stockclusters ... ValidationError`` keep working unchanged).
 
 Importing this module has no side effects.
 """
 
 from __future__ import annotations
 
-import math
+import quantcore as _qc
 
 from stockclusters._exceptions import ValidationError
 
-# quantcore-candidate: mirrors pairs-trading:evaluation/dsr.py (cross-checked to
-# ma-crossover-backtest:data_snooping.py for the (k+2)/4 term).
+__all__ = ["deflated_sharpe_ratio", "probabilistic_sharpe_ratio"]
 
-# Euler-Mascheroni constant for the expected-maximum order statistic.
-_EULER_MASCHERONI: float = 0.5772156649015329
+# quantcore-candidate: DONE — re-exported from quantcore (kernels byte-identical;
+# cross-checked to pairs-trading:evaluation/dsr.py and ma-crossover-backtest for
+# the (k+2)/4 term). The two honest-input helpers
+# (``quantcore.variance_of_trial_sharpes`` / ``quantcore.effective_n_trials``)
+# fix the V=0.0 / n_trials=1 footguns at the call sites.
 
-
-def _norm_cdf(x: float) -> float:
-    """Standard-normal CDF via the error function (no SciPy import needed)."""
-    # quantcore-candidate: Phi(x) = 0.5 * (1 + erf(x / sqrt(2))).
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
-
-
-def _norm_ppf(p: float) -> float:
-    """Standard-normal inverse CDF (Acklam's rational approximation).
-
-    Accurate to ~1.15e-9 absolute error across ``p in (0, 1)``, which is well
-    within the DSR parity tolerance (1e-4 against the Bailey-LdP table).
-    """
-    # quantcore-candidate: Acklam's algorithm (mirrors pairs:evaluation/dsr.py).
-    if not 0.0 < p < 1.0:
-        raise ValidationError(f"_norm_ppf requires p in (0, 1), got {p}.")
-
-    a = (
-        -3.969683028665376e01,
-        2.209460984245205e02,
-        -2.759285104469687e02,
-        1.383577518672690e02,
-        -3.066479806614716e01,
-        2.506628277459239e00,
-    )
-    b = (
-        -5.447609879822406e01,
-        1.615858368580409e02,
-        -1.556989798598866e02,
-        6.680131188771972e01,
-        -1.328068155288572e01,
-    )
-    c = (
-        -7.784894002430293e-03,
-        -3.223964580411365e-01,
-        -2.400758277161838e00,
-        -2.549732539343734e00,
-        4.374664141464968e00,
-        2.938163982698783e00,
-    )
-    d = (
-        7.784695709041462e-03,
-        3.224671290700398e-01,
-        2.445134137142996e00,
-        3.754408661907416e00,
-    )
-
-    p_low = 0.02425
-    p_high = 1.0 - p_low
-
-    if p < p_low:
-        q = math.sqrt(-2.0 * math.log(p))
-        x = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0
-        )
-    elif p <= p_high:
-        q = p - 0.5
-        r = q * q
-        x = (
-            (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5])
-            * q
-            / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0)
-        )
-    else:
-        q = math.sqrt(-2.0 * math.log(1.0 - p))
-        x = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0
-        )
-
-    # One Halley refinement step for full double precision.
-    e = _norm_cdf(x) - p
-    u = e * math.sqrt(2.0 * math.pi) * math.exp(x * x / 2.0)
-    x = x - u / (1.0 + x * u / 2.0)
-    return x
+# Euler-Mascheroni constant for the expected-maximum order statistic. Kept as a
+# module-level name for backward compatibility; sourced from quantcore so the two
+# packages cannot drift.
+_EULER_MASCHERONI: float = _qc.EULER_MASCHERONI
 
 
 def probabilistic_sharpe_ratio(
@@ -146,24 +88,18 @@ def probabilistic_sharpe_ratio(
     ValidationError
         If ``n_obs < 2``.
     """
-    if n_obs < 2:
-        raise ValidationError(f"probabilistic_sharpe_ratio requires n_obs >= 2, got {n_obs}.")
-
-    sr = float(observed_sharpe)
-    # FULL (non-excess) kurtosis term: (gamma_4 - 1) / 4. For a Gaussian this is
-    # (3 - 1) / 4 = 0.5, the canonical Bailey-Lopez de Prado coefficient. This is
-    # equivalent to the excess-kurtosis form (k + 2) / 4 with k = gamma_4 - 3.
-    variance = 1.0 - skew * sr + 0.25 * (kurtosis - 1.0) * sr * sr
-    # The bracket variance is a non-negativity-guaranteed quantity in theory; if
-    # numerical inputs push it non-positive the statistic is undefined.
-    if variance <= 0.0:
-        raise ValidationError(
-            "probabilistic_sharpe_ratio: non-positive variance term "
-            f"(1 - skew*SR + (kurt-1)/4*SR^2 = {variance}); check skew/kurtosis."
+    try:
+        return _qc.probabilistic_sharpe_ratio(
+            observed_sharpe,
+            n_obs=n_obs,
+            skew=skew,
+            kurtosis=kurtosis,
+            benchmark_sharpe=benchmark_sharpe,
         )
-
-    z = (sr - benchmark_sharpe) * math.sqrt(n_obs - 1) / math.sqrt(variance)
-    return _norm_cdf(z)
+    except _qc.ValidationError as exc:
+        # Translate to this package's ValidationError (no shared ancestry) keeping
+        # the IDENTICAL message so callers' catch semantics and messages are intact.
+        raise ValidationError(str(exc)) from exc
 
 
 def deflated_sharpe_ratio(
@@ -195,6 +131,13 @@ def deflated_sharpe_ratio(
     ``(\gamma_4)`` kurtosis term. The DSR is non-increasing in ``n_trials``
     (monotonicity asserted in the property suite).
 
+    ``variance_of_trial_sharpes`` (``V``) must be the REAL cross-trial variance of
+    the per-observation trial Sharpes (use ``quantcore.variance_of_trial_sharpes``
+    or ``quantcore.expected_sharpe_variance``), never a hardcoded ``0.0`` -- with
+    ``V == 0`` or ``N == 1`` the benchmark collapses to ``0`` and the DSR
+    degenerates to the plain PSR-against-zero, i.e. the multiplicity correction is
+    silently disabled.
+
     Parameters
     ----------
     observed_sharpe:
@@ -222,35 +165,16 @@ def deflated_sharpe_ratio(
         If ``n_obs < 2``, ``n_trials < 1``, or
         ``variance_of_trial_sharpes < 0``.
     """
-    if n_obs < 2:
-        raise ValidationError(f"deflated_sharpe_ratio requires n_obs >= 2, got {n_obs}.")
-    if n_trials < 1:
-        raise ValidationError(f"deflated_sharpe_ratio requires n_trials >= 1, got {n_trials}.")
-    if variance_of_trial_sharpes < 0.0:
-        raise ValidationError(
-            "deflated_sharpe_ratio requires variance_of_trial_sharpes >= 0, "
-            f"got {variance_of_trial_sharpes}."
+    try:
+        return _qc.deflated_sharpe_ratio(
+            observed_sharpe,
+            n_obs=n_obs,
+            n_trials=n_trials,
+            variance_of_trial_sharpes=variance_of_trial_sharpes,
+            skew=skew,
+            kurtosis=kurtosis,
         )
-
-    # Expected maximum of n_trials i.i.d. trial Sharpes (Gumbel/extreme-value
-    # approximation): SR*_0 = sqrt(V) * [ (1 - gamma) * z(1 - 1/N)
-    #                                     + gamma * z(1 - 1/(N*e)) ].
-    # With a single trial (N == 1) the expected-maximum benchmark collapses to
-    # zero, so the DSR reduces to the plain PSR against zero.
-    sqrt_v = math.sqrt(variance_of_trial_sharpes)
-    n = float(n_trials)
-    if n_trials == 1 or sqrt_v == 0.0:
-        benchmark = 0.0
-    else:
-        gamma = _EULER_MASCHERONI
-        z1 = _norm_ppf(1.0 - 1.0 / n)
-        z2 = _norm_ppf(1.0 - 1.0 / (n * math.e))
-        benchmark = sqrt_v * ((1.0 - gamma) * z1 + gamma * z2)
-
-    return probabilistic_sharpe_ratio(
-        observed_sharpe,
-        n_obs=n_obs,
-        skew=skew,
-        kurtosis=kurtosis,
-        benchmark_sharpe=benchmark,
-    )
+    except _qc.ValidationError as exc:
+        # Translate to this package's ValidationError (no shared ancestry) keeping
+        # the IDENTICAL message so callers' catch semantics and messages are intact.
+        raise ValidationError(str(exc)) from exc

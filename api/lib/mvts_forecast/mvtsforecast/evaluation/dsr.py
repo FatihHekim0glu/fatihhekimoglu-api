@@ -5,252 +5,76 @@ non-normality (skew and kurtosis), and — for the Deflated Sharpe — the numbe
 configurations tried (multiple-testing / selection bias). The Deflated Sharpe is
 the honest yardstick that counts the FULL configuration grid as ``n_trials``.
 
+MIGRATED TO ``quantcore``. The PSR/DSR kernel and the honest-input ``V`` helper
+(:func:`variance_of_trial_sharpes`) are now the single-source-of-truth
+implementations in :mod:`quantcore.dsr` (byte-identical to the previously-vendored
+copy, validated to 1e-8 against an independent ``scipy.stats.norm`` reference).
+This module re-exports them under the original local public names, translating
+:class:`quantcore.ValidationError` into :class:`mvtsforecast.ValidationError`
+(the two have no shared ancestry) with IDENTICAL message strings so existing
+``except ValidationError`` clauses and ``pytest.raises(ValidationError)`` tests are
+unchanged. The private ``_norm_cdf`` / ``_norm_ppf`` helpers (imported by the
+parity suite) and the ``_EULER_MASCHERONI`` constant are re-exported verbatim.
+
 Importing this module has no side effects.
 """
 
 from __future__ import annotations
 
-import math
+from collections.abc import Callable
+from functools import wraps
+from typing import Any, TypeVar
+
+from quantcore import ValidationError as _QuantCoreValidationError
+from quantcore.dsr import _norm_cdf as _norm_cdf  # re-export for the parity suite
+from quantcore.dsr import _norm_ppf as _norm_ppf  # re-export for the parity suite
+from quantcore.dsr import deflated_sharpe_ratio as _qc_deflated_sharpe_ratio
+from quantcore.dsr import expected_sharpe_variance as _qc_expected_sharpe_variance
+from quantcore.dsr import probabilistic_sharpe_ratio as _qc_probabilistic_sharpe_ratio
+from quantcore.dsr import variance_of_trial_sharpes as _qc_variance_of_trial_sharpes
 
 from mvtsforecast._exceptions import ValidationError
 
-# quantcore-candidate: mirrors pairs-trading:evaluation/dsr.py (cross-checked to
-# ma-crossover-backtest:data_snooping.py for the (k+2)/4 term).
-
-# Euler-Mascheroni constant for the expected-maximum order statistic.
+# Euler-Mascheroni constant for the expected-maximum order statistic. Kept as a
+# module-level name for any caller/test that referenced it on the old vendored
+# implementation; the live value now lives in ``quantcore._constants``.
 _EULER_MASCHERONI: float = 0.5772156649015329
 
-
-def _norm_cdf(x: float) -> float:
-    """Standard-normal CDF via the error function (no SciPy import needed)."""
-    # quantcore-candidate: Phi(x) = 0.5 * (1 + erf(x / sqrt(2))).
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+_F = TypeVar("_F", bound=Callable[..., Any])
 
 
-def _norm_ppf(p: float) -> float:
-    """Standard-normal inverse CDF (Acklam's rational approximation).
+def _translate_validation_error(func: _F) -> _F:
+    """Wrap a quantcore callable, re-raising its ValidationError as mvts's.
 
-    Accurate to ~1.15e-9 absolute error across ``p in (0, 1)``, which is well
-    within the DSR parity tolerance (1e-4 against the Bailey-LdP table).
+    ``quantcore.ValidationError`` and ``mvtsforecast.ValidationError`` share no
+    ancestry, so a bare quantcore call would leak an exception type the mvts
+    callers (and tests) do not catch. This decorator re-raises with the SAME
+    message string under mvts's own ``ValidationError`` so the public contract is
+    byte-for-byte preserved.
     """
-    # quantcore-candidate: Acklam's algorithm (mirrors pairs:evaluation/dsr.py).
-    if not 0.0 < p < 1.0:
-        raise ValidationError(f"_norm_ppf requires p in (0, 1), got {p}.")
 
-    a = (
-        -3.969683028665376e01,
-        2.209460984245205e02,
-        -2.759285104469687e02,
-        1.383577518672690e02,
-        -3.066479806614716e01,
-        2.506628277459239e00,
-    )
-    b = (
-        -5.447609879822406e01,
-        1.615858368580409e02,
-        -1.556989798598866e02,
-        6.680131188771972e01,
-        -1.328068155288572e01,
-    )
-    c = (
-        -7.784894002430293e-03,
-        -3.223964580411365e-01,
-        -2.400758277161838e00,
-        -2.549732539343734e00,
-        4.374664141464968e00,
-        2.938163982698783e00,
-    )
-    d = (
-        7.784695709041462e-03,
-        3.224671290700398e-01,
-        2.445134137142996e00,
-        3.754408661907416e00,
-    )
+    @wraps(func)
+    def _wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return func(*args, **kwargs)
+        except _QuantCoreValidationError as exc:  # pragma: no cover - thin shim
+            raise ValidationError(str(exc)) from exc
 
-    p_low = 0.02425
-    p_high = 1.0 - p_low
-
-    if p < p_low:
-        q = math.sqrt(-2.0 * math.log(p))
-        x = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0
-        )
-    elif p <= p_high:
-        q = p - 0.5
-        r = q * q
-        x = (
-            (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5])
-            * q
-            / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0)
-        )
-    else:
-        q = math.sqrt(-2.0 * math.log(1.0 - p))
-        x = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0
-        )
-
-    # One Halley refinement step for full double precision.
-    e = _norm_cdf(x) - p
-    u = e * math.sqrt(2.0 * math.pi) * math.exp(x * x / 2.0)
-    x = x - u / (1.0 + x * u / 2.0)
-    return x
+    return _wrapper  # type: ignore[return-value]
 
 
-def probabilistic_sharpe_ratio(
-    observed_sharpe: float,
-    *,
-    n_obs: int,
-    skew: float = 0.0,
-    kurtosis: float = 3.0,
-    benchmark_sharpe: float = 0.0,
-) -> float:
-    r"""Probabilistic Sharpe Ratio: P(true SR > benchmark) given the sample.
+# Re-exported under the original local public names (signatures + docstrings live
+# in quantcore.dsr; the wrapper only translates the exception type).
+probabilistic_sharpe_ratio = _translate_validation_error(_qc_probabilistic_sharpe_ratio)
+deflated_sharpe_ratio = _translate_validation_error(_qc_deflated_sharpe_ratio)
+variance_of_trial_sharpes = _translate_validation_error(_qc_variance_of_trial_sharpes)
+expected_sharpe_variance = _translate_validation_error(_qc_expected_sharpe_variance)
 
-    Returns
-
-    .. math::
-
-        \text{PSR} = \Phi\!\left(
-            \frac{(\widehat{SR} - SR^\*)\sqrt{n - 1}}
-                 {\sqrt{1 - \gamma_3\,\widehat{SR} + \frac{\gamma_4 - 1}{4}\widehat{SR}^2}}
-        \right),
-
-    where :math:`\widehat{SR}` is the (non-annualized, per-observation) observed
-    Sharpe, :math:`SR^\*` the benchmark Sharpe, :math:`\gamma_3` the skewness,
-    :math:`\gamma_4` the kurtosis, and :math:`\Phi` the standard-normal CDF.
-
-    HONESTY REQUIREMENT: ``kurtosis`` here is the **full** (non-excess) kurtosis,
-    so a Gaussian has ``kurtosis=3`` and the bracket uses :math:`(\gamma_4 - 1)/4`.
-    The excess-vs-full-kurtosis mix-up is a known PSR footgun and is rejected.
-
-    Parameters
-    ----------
-    observed_sharpe:
-        The observed per-observation (non-annualized) Sharpe ratio.
-    n_obs:
-        The number of return observations.
-    skew:
-        Sample skewness of the returns (``0`` for symmetric).
-    kurtosis:
-        Sample FULL kurtosis of the returns (``3`` for Gaussian).
-    benchmark_sharpe:
-        The per-observation benchmark Sharpe to test against (default ``0``).
-
-    Returns
-    -------
-    float
-        The probabilistic Sharpe ratio in ``[0, 1]``.
-
-    Raises
-    ------
-    ValidationError
-        If ``n_obs < 2``.
-    """
-    if n_obs < 2:
-        raise ValidationError(f"probabilistic_sharpe_ratio requires n_obs >= 2, got {n_obs}.")
-
-    sr = float(observed_sharpe)
-    # FULL (non-excess) kurtosis term: (gamma_4 - 1) / 4. For a Gaussian this is
-    # (3 - 1) / 4 = 0.5, the canonical Bailey-Lopez de Prado coefficient. This is
-    # equivalent to the excess-kurtosis form (k + 2) / 4 with k = gamma_4 - 3.
-    variance = 1.0 - skew * sr + 0.25 * (kurtosis - 1.0) * sr * sr
-    # The bracket variance is a non-negativity-guaranteed quantity in theory; if
-    # numerical inputs push it non-positive the statistic is undefined.
-    if variance <= 0.0:
-        raise ValidationError(
-            "probabilistic_sharpe_ratio: non-positive variance term "
-            f"(1 - skew*SR + (kurt-1)/4*SR^2 = {variance}); check skew/kurtosis."
-        )
-
-    z = (sr - benchmark_sharpe) * math.sqrt(n_obs - 1) / math.sqrt(variance)
-    return _norm_cdf(z)
-
-
-def deflated_sharpe_ratio(
-    observed_sharpe: float,
-    *,
-    n_obs: int,
-    n_trials: int,
-    variance_of_trial_sharpes: float,
-    skew: float = 0.0,
-    kurtosis: float = 3.0,
-) -> float:
-    r"""Deflated Sharpe Ratio: PSR against a multiplicity-inflated benchmark.
-
-    The DSR is the PSR evaluated against an *expected-maximum* benchmark Sharpe
-    that grows with the number of independent trials :math:`N`:
-
-    .. math::
-
-        SR^\*_0 = \sqrt{V}\left[(1 - \gamma)\,\Phi^{-1}\!\left(1 - \tfrac{1}{N}\right)
-                  + \gamma\,\Phi^{-1}\!\left(1 - \tfrac{1}{N}e^{-1}\right)\right],
-
-    where :math:`V` is the variance of the trial Sharpe ratios, :math:`\gamma`
-    the Euler-Mascheroni constant, and :math:`N` = ``n_trials``. The DSR is then
-    ``probabilistic_sharpe_ratio(observed_sharpe, ..., benchmark_sharpe=SR*_0)``.
-
-    HONESTY REQUIREMENT: ``n_trials`` must count the FULL explored configuration
-    grid (#allocators x #linkages x #covariance-estimators x #rmt(on/off) x
-    #rebalance-freqs x #cost-levels x #lookback-windows). The PSR uses the FULL
-    ``(\gamma_4)`` kurtosis term. The DSR is non-increasing in ``n_trials``
-    (monotonicity asserted in the property suite).
-
-    Parameters
-    ----------
-    observed_sharpe:
-        The observed per-observation (non-annualized) Sharpe ratio of the
-        selected configuration.
-    n_obs:
-        The number of return observations.
-    n_trials:
-        The FULL number of configurations explored (the multiplicity count).
-    variance_of_trial_sharpes:
-        The cross-trial variance :math:`V` of the per-observation Sharpe ratios.
-    skew:
-        Sample skewness of the selected configuration's returns.
-    kurtosis:
-        Sample FULL kurtosis of the selected configuration's returns.
-
-    Returns
-    -------
-    float
-        The deflated Sharpe ratio in ``[0, 1]``.
-
-    Raises
-    ------
-    ValidationError
-        If ``n_obs < 2``, ``n_trials < 1``, or
-        ``variance_of_trial_sharpes < 0``.
-    """
-    if n_obs < 2:
-        raise ValidationError(f"deflated_sharpe_ratio requires n_obs >= 2, got {n_obs}.")
-    if n_trials < 1:
-        raise ValidationError(f"deflated_sharpe_ratio requires n_trials >= 1, got {n_trials}.")
-    if variance_of_trial_sharpes < 0.0:
-        raise ValidationError(
-            "deflated_sharpe_ratio requires variance_of_trial_sharpes >= 0, "
-            f"got {variance_of_trial_sharpes}."
-        )
-
-    # Expected maximum of n_trials i.i.d. trial Sharpes (Gumbel/extreme-value
-    # approximation): SR*_0 = sqrt(V) * [ (1 - gamma) * z(1 - 1/N)
-    #                                     + gamma * z(1 - 1/(N*e)) ].
-    # With a single trial (N == 1) the expected-maximum benchmark collapses to
-    # zero, so the DSR reduces to the plain PSR against zero.
-    sqrt_v = math.sqrt(variance_of_trial_sharpes)
-    n = float(n_trials)
-    if n_trials == 1 or sqrt_v == 0.0:
-        benchmark = 0.0
-    else:
-        gamma = _EULER_MASCHERONI
-        z1 = _norm_ppf(1.0 - 1.0 / n)
-        z2 = _norm_ppf(1.0 - 1.0 / (n * math.e))
-        benchmark = sqrt_v * ((1.0 - gamma) * z1 + gamma * z2)
-
-    return probabilistic_sharpe_ratio(
-        observed_sharpe,
-        n_obs=n_obs,
-        skew=skew,
-        kurtosis=kurtosis,
-        benchmark_sharpe=benchmark,
-    )
+__all__ = [
+    "_norm_cdf",
+    "_norm_ppf",
+    "deflated_sharpe_ratio",
+    "expected_sharpe_variance",
+    "probabilistic_sharpe_ratio",
+    "variance_of_trial_sharpes",
+]

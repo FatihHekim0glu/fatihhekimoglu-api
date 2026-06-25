@@ -250,6 +250,8 @@ def _run_diversification(
     p-value and a deflated Sharpe over a conservative trial count. The hosted
     backend runs the full purge/embargo walk-forward; this is the local summary.
     """
+    import quantcore as qc
+
     from stockclusters._constants import PERIODS_PER_YEAR
     from stockclusters.allocation.schemes import (
         cluster_equal_weight,
@@ -289,13 +291,29 @@ def _run_diversification(
     )
     comparison = block_bootstrap_sharpe_gap(best_r, r_1n, n_bootstrap=500, seed=seed)
     per_obs = best_s / (PERIODS_PER_YEAR**0.5)
-    # Conservative trial count for the CLI (two weighting schemes); the hosted
-    # backend counts the FULL swept grid.
+    # REAL cross-trial variance V (was hardcoded to 0.0, which silently disabled
+    # the DSR's multiplicity deflation and collapsed it to a plain PSR-against-
+    # zero). The "trials" in this CLI horse race are the THREE strategies actually
+    # compared (1/N, cluster-EW, stripped-HRP); V is the cross-trial variance of
+    # their PER-OBSERVATION Sharpes (same per-obs units as ``per_obs`` above), and
+    # the honest n_trials is that same count of 3.
+    ann = PERIODS_PER_YEAR**0.5
+    trial_sharpes = [
+        s / ann for s in (s_1n, s_ew, s_hrp) if s == s  # drop NaN (NaN != NaN)
+    ]
+    n_trials = len(trial_sharpes)
+    var_trials = qc.variance_of_trial_sharpes(trial_sharpes)
+    # With fewer than two finite trial Sharpes the cross-trial variance is 0.0;
+    # fall back to the analytic single-series proxy so the deflation is NEVER
+    # silently disabled (V=0.0 is the bug being fixed), and count one honest trial.
+    if var_trials <= 0.0:
+        var_trials = qc.expected_sharpe_variance(per_obs, n_obs=len(best_r))
+        n_trials = max(n_trials, 1)
     dsr = deflated_sharpe_ratio(
         per_obs,
         n_obs=len(best_r),
-        n_trials=2,
-        variance_of_trial_sharpes=0.0,
+        n_trials=n_trials,
+        variance_of_trial_sharpes=var_trials,
     )
     verdict = derive_clustering_verdict(comparison.jkm_pvalue, dsr, best_s - s_1n)
 
