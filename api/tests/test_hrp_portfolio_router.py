@@ -212,8 +212,133 @@ def test_get_provider_passes_supabase_through(monkeypatch: pytest.MonkeyPatch) -
 
 
 # ---------------------------------------------------------------------------
+# Deflated-Sharpe gate: honest-null + positive-control
+# ---------------------------------------------------------------------------
+
+
+def _block_correlated_panel(seed: int, *, n_obs: int = 1800) -> pd.DataFrame:
+    """A covariance structure HRP genuinely exploits out-of-sample.
+
+    Three tight within-block correlation clusters (rho ~= 0.9, cross-block ~= 0)
+    plus one toxic high-volatility / negative-drift block. HRP allocates risk
+    ACROSS the correlation blocks and underweights the volatile cluster, while
+    1/N is forced to hold the toxic names at full equal weight - so HRP beats
+    1/N on a risk-adjusted basis out-of-sample. Used as the DSR positive control.
+    """
+    import math as _math
+
+    rng = np.random.default_rng(seed)
+    n_per_block, n_blocks = 3, 3
+    n = n_per_block * n_blocks
+    corr = np.eye(n)
+    for b in range(n_blocks):
+        sl = slice(b * n_per_block, (b + 1) * n_per_block)
+        block = np.full((n_per_block, n_per_block), 0.9)
+        np.fill_diagonal(block, 1.0)
+        corr[sl, sl] = block
+    # Two calm low-vol clusters, one volatile cluster that drags 1/N down.
+    vols_ann = np.array([0.10, 0.11, 0.10, 0.12, 0.13, 0.12, 0.55, 0.60, 0.65])
+    vols = vols_ann / _math.sqrt(252.0)
+    drift_ann = np.array([0.12, 0.13, 0.12, 0.11, 0.12, 0.11, 0.0, -0.02, -0.04])
+    drifts = drift_ann / 252.0
+    cov = np.outer(vols, vols) * corr
+    chol = np.linalg.cholesky(cov + 1e-12 * np.eye(n))
+    eps = rng.standard_normal((n_obs, n)) @ chol.T
+    idx = pd.bdate_range("2012-01-01", periods=n_obs)
+    return pd.DataFrame(drifts + eps, index=idx, columns=[f"A{i}" for i in range(n)])
+
+
+def test_dsr_honest_null_default_is_real_not_pinned() -> None:
+    """On the default synthetic panel HRP does NOT beat 1/N out-of-sample.
+
+    REGRESSION GUARD for the dead-DSR bug: the verdict must be
+    ``no_significant_difference`` (negative gap, CI straddling zero), AND the
+    deflated Sharpe must be a real number in (0, 1] - NOT pinned at exactly 0
+    by a hardcoded ``variance_of_trial_sharpes=1.0``.
+    """
+    from api.routers.hrp_portfolio import (
+        HRPRequest,
+        _parse_ticker_list,
+        _run_pipeline,
+        _synthetic_returns,
+    )
+
+    req = HRPRequest(start="2018-01-01", end="2023-12-31")
+    tickers = _parse_ticker_list(req.tickers)
+    returns = _synthetic_returns(tickers, req.start, req.end, req.seed)
+    summary = _run_pipeline(returns, req)["summary"]
+
+    assert summary["headline_verdict"] == "no_significant_difference"
+    # CI straddles zero on the honest null.
+    assert summary["ci_low"] <= 0.0 <= summary["ci_high"]
+
+    dsr = summary["deflated_sharpe"]
+    assert dsr is not None
+    assert 0.0 < dsr <= 1.0, f"DSR must be a real number in (0, 1], got {dsr!r}"
+    # The old bug pinned it at exactly 0.0; assert we are NOT there.
+    assert dsr != 0.0
+    # n_effective_trials is the HONEST count of trial Sharpes used (HRP + 1/N +
+    # IVP + min_var = 4 on the default include_baselines), not a grid product.
+    assert summary["n_effective_trials"] == 4
+
+
+def test_dsr_positive_control_hrp_beats_1n() -> None:
+    """A covariance structure HRP genuinely exploits => HRP_BEATS_1N fires.
+
+    With the dead-DSR bug (DSR pinned at 0) this verdict could NEVER fire even
+    when HRP truly wins. After the fix the full served verdict path must emit
+    ``hrp_beats_1n`` with a strictly-positive bootstrap CI, a JKM-significant
+    p-value, and a deflated Sharpe clearing the 0.95 gate.
+    """
+    from api.routers.hrp_portfolio import HRPRequest, _run_pipeline
+
+    panel = _block_correlated_panel(seed=2)
+    req = HRPRequest(
+        tickers=",".join(panel.columns),
+        start="2012-01-01",
+        end="2099-01-01",
+        covariance="ledoit_wolf",
+        linkage="single",
+        rebalance="monthly",
+        lookback_window=252,
+        n_bootstrap=2000,
+        seed=7,
+        data_source_pref="synthetic",
+    )
+    summary = _run_pipeline(panel, req)["summary"]
+
+    assert summary["headline_verdict"] == "hrp_beats_1n", summary
+    # HRP genuinely wins: positive gap, strictly-positive CI, significant JKM.
+    assert summary["sharpe_gap_hrp_vs_1n"] > 0.0
+    assert summary["ci_low"] > 0.0
+    assert summary["jkm_pvalue"] < 0.05
+    # The deflated Sharpe clears the 0.95 overfitting gate on a real win.
+    assert summary["deflated_sharpe"] is not None
+    assert summary["deflated_sharpe"] > 0.95
+    assert summary["n_effective_trials"] == 4
+
+
+# ---------------------------------------------------------------------------
 # Helper units
 # ---------------------------------------------------------------------------
+
+
+def test_per_obs_sharpe_units_are_non_annualized() -> None:
+    """``_per_obs_sharpe`` is mean/std(ddof=1) with NO sqrt(252) annualization."""
+    from api.routers.hrp_portfolio import _per_obs_sharpe
+
+    idx = pd.bdate_range("2020-01-01", periods=300)
+    x = pd.Series(np.full(300, 0.001) + 0.0, index=idx)
+    x = x + pd.Series(np.linspace(-0.01, 0.01, 300), index=idx)  # nonzero std
+    expected = float(x.std(ddof=1))
+    got = _per_obs_sharpe(x)
+    assert abs(got - float(x.mean()) / expected) < 1e-12
+    # Sanity: the annualized Sharpe is sqrt(252)x larger - confirms the helper
+    # returns the PER-OBSERVATION (non-annualized) quantity the DSR expects.
+    assert abs(got * (252.0**0.5) - float(x.mean()) / expected * (252.0**0.5)) < 1e-9
+    # A degenerate (exactly zero-std) series yields 0.0, never NaN/inf.
+    zero_std = pd.Series(np.zeros(10), index=pd.bdate_range("2020-01-01", periods=10))
+    assert _per_obs_sharpe(zero_std) == 0.0
 
 
 def test_bootstrap_gap_samples_shape() -> None:

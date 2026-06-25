@@ -298,8 +298,9 @@ def compare(
     Diebold-Mariano test of each GNN vs. the best baseline, and derives the honest
     verdict via :func:`gnnstocks.evaluation.verdict.derive_verdict` —
     ``gnn_beats_baseline`` is ``False`` unless a GNN beats the best baseline with a
-    DM-significant margin AND a positive Deflated Sharpe. On the synthetic null the
-    verdict is ``False`` by construction.
+    DM-significant margin AND a Deflated Sharpe clearing the ``1 - alpha``
+    confidence threshold (``>= 0.95``). On the synthetic null the verdict is
+    ``False`` by construction.
 
     Parameters
     ----------
@@ -713,7 +714,8 @@ def _compare_models(
     scores every model in RANKING space (rank-IC + long-short decile spread net of
     costs), runs the Diebold-Mariano test of each GNN's per-period skill vs. the
     best baseline, and derives ``gnn_beats_baseline`` via the pure verdict — ``True``
-    only if a GNN clears the DM-significance AND positive-DSR gates.
+    only if a GNN clears the DM-significance gate AND the DSR ``1 - alpha``
+    confidence gate (``deflated_sharpe >= 0.95``).
     """
     import math
 
@@ -790,7 +792,8 @@ def _compare_models(
             )
 
     # If no GNN was served (or none was favourable), the verdict stays the honest
-    # NULL: a non-significant DM and a non-positive DSR can never flip it to True.
+    # NULL: a non-significant DM and a DSR below the 1 - alpha threshold (< 0.95)
+    # can never flip it to True.
     if not math.isfinite(best_dm_stat):  # pragma: no cover - DM helper clamps to finite
         best_dm_stat = 0.0
     verdict = derive_verdict(

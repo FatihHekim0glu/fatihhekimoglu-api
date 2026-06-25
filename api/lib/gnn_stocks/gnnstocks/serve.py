@@ -58,7 +58,8 @@ class GnnStocksSummary:
         Deflated Sharpe (FULL-grid ``n_trials``) keyed by model name.
     gnn_beats_baseline:
         The PURE verdict: ``True`` iff a GNN beats the best baseline with a
-        DM-significant rank-IC / long-short margin AND a positive DSR.
+        DM-significant rank-IC / long-short margin AND a DSR clearing the
+        ``1 - alpha`` confidence threshold (``>= 0.95``).
     n_effective_trials:
         The honest multiplicity count used for the DSR.
     data_source:
@@ -182,6 +183,42 @@ def run_analysis(
     # offline; the request path stays synthetic so it never needs a key/network.
     data_source = "synthetic"
 
+    # ENTRYPOINT PARITY: for the committed DEFAULT config, return the rigorously
+    # produced ``metrics.json`` summary verbatim instead of a live recompute.
+    #
+    # The committed artifact was produced offline by ``train.train_pipeline`` with a
+    # geometry the request path CANNOT reproduce: a 1500-row panel (vs the live
+    # path's smaller default), purged + EMBARGOED walk-forward folds, and a GNN
+    # RE-TRAINED on each fold's expanding train window (only fold 0's graph is
+    # exported to ONNX). The torch-free serve path can only ever serve that single
+    # committed ONNX for every fold, so a live default recompute matches NEITHER the
+    # README table NOR ``metrics.json`` (different panel length, no embargo, single
+    # GNN). Serving the committed summary is therefore the HONEST default: the
+    # deployed verdict is the rigorous OOS result, derived offline, returned as-is.
+    #
+    # Off-default requests (any parameter differing from the committed config) still
+    # recompute LIVE below — an honest, cheaper torch-free approximation flagged via
+    # ``data_source`` so the caller knows it is not the committed artifact.
+    committed_summary = _committed_default_summary(
+        n_assets=n_assets,
+        graph_type=graph_type,
+        models=requested,
+        lookback=lookback,
+        horizon=horizon,
+        seed=seed,
+    )
+    if committed_summary is not None:
+        graph_figure = _build_graph_figure(
+            _committed_panel(n_assets=n_assets, seed=seed),
+            graph_type=graph_type,
+            lookback=lookback,
+            seed=seed,
+        )
+        ic_fig = _build_ic_figure(
+            committed_summary.ic_by_model, committed_summary.ls_sharpe_by_model
+        )
+        return GnnStocksRun(summary=committed_summary, graph_figure=graph_figure, ic_figure=ic_fig)
+
     # Reuse the CLI's torch-free comparison engine: live naive + ridge (numpy /
     # sklearn) and any requested GNNs served from their committed ONNX artifacts
     # (onnxruntime, NEVER torch), scored in RANKING space with the PURE verdict.
@@ -222,12 +259,13 @@ def run_analysis(
         deflated_sharpe=deflated_sharpe,
         gnn_beats_baseline=bool(verdict.gnn_beats_baseline),
         n_effective_trials=n_effective_trials,
-        data_source=data_source,
+        # Off-default requests are honestly flagged as a LIVE recompute (a cheaper
+        # torch-free approximation), never the committed artifact: the deployed
+        # default takes the ``_committed_default_summary`` short-circuit above.
+        data_source=f"{data_source}_live",
     )
 
-    graph_figure = _build_graph_figure(
-        panel, graph_type=graph_type, lookback=lookback, seed=seed
-    )
+    graph_figure = _build_graph_figure(panel, graph_type=graph_type, lookback=lookback, seed=seed)
     ic_fig = _build_ic_figure(summary.ic_by_model, summary.ls_sharpe_by_model)
     return GnnStocksRun(summary=summary, graph_figure=graph_figure, ic_figure=ic_fig)
 
@@ -246,6 +284,114 @@ def _read_committed_metrics() -> dict[str, Any]:
     except (OSError, ValueError):  # pragma: no cover - defensive against a corrupt file
         return {}
     return payload
+
+
+def _committed_config_matches(
+    *,
+    n_assets: int,
+    graph_type: str,
+    models: Sequence[str],
+    lookback: int,
+    horizon: int,
+    seed: int,
+    committed_config: dict[str, Any],
+) -> bool:
+    """Return ``True`` iff the request is the committed offline DEFAULT config.
+
+    The committed ``metrics.json`` is keyed to a single offline configuration
+    (``n_assets``, ``lookback``, ``horizon``, ``seed``, the corr-kNN graph, and the
+    FULL ``{naive, ridge, gcn, graphsage}`` roster). Only a request matching that
+    config byte-for-byte may be served the committed summary; ANY deviation (a
+    different ``n_assets``/``lookback``/``horizon``/``seed``, a non-corr-kNN graph,
+    or a model SUBSET) falls through to the live recompute. ``graph_type`` is gated
+    to ``"corr_knn"`` because that is the only adjacency the committed metrics score.
+    """
+    if graph_type != "corr_knn":
+        return False
+    # The committed summary reports the full roster; a model subset must recompute
+    # so the served table never claims committed numbers for a partial request.
+    if set(models) != set(_ALL_MODELS):
+        return False
+    return (
+        int(n_assets) == int(committed_config.get("n_assets", -1))
+        and int(lookback) == int(committed_config.get("lookback", -1))
+        and int(horizon) == int(committed_config.get("horizon", -1))
+        and int(seed) == int(committed_config.get("seed", -1))
+    )
+
+
+def _committed_default_summary(
+    *,
+    n_assets: int,
+    graph_type: str,
+    models: Sequence[str],
+    lookback: int,
+    horizon: int,
+    seed: int,
+) -> GnnStocksSummary | None:
+    """Build the served summary from ``metrics.json`` for the committed DEFAULT config.
+
+    Returns ``None`` (so the caller recomputes LIVE) when no committed artifact is
+    present, when the artifact is incomplete, or when the request is NOT the
+    committed default config (see :func:`_committed_config_matches`). When it
+    returns a summary, every scalar — ``ic_by_model``, ``ls_sharpe_by_model``,
+    ``deflated_sharpe`` (ALL four models), ``dm_pvalue_vs_baseline``, ``best_model``,
+    the PURE ``gnn_beats_baseline`` verdict, and ``n_effective_trials`` — is read
+    VERBATIM from the rigorously produced offline artifact, so the served default
+    reproduces ``metrics.json`` (and the README headline) exactly. ``data_source``
+    is the committed provenance string (``"synthetic"``) to mark it as the artifact.
+    """
+    committed = _read_committed_metrics()
+    if not committed:
+        return None
+    config = committed.get("config")
+    summary = committed.get("summary")
+    verdict = committed.get("verdict")
+    if (
+        not isinstance(config, dict)
+        or not isinstance(summary, dict)
+        or not isinstance(verdict, dict)
+    ):
+        return None  # pragma: no cover - committed artifact is always complete
+    if not _committed_config_matches(
+        n_assets=n_assets,
+        graph_type=graph_type,
+        models=models,
+        lookback=lookback,
+        horizon=horizon,
+        seed=seed,
+        committed_config=config,
+    ):
+        return None
+
+    ic_by_model = summary.get("ic_by_model", {})
+    ls_sharpe_by_model = summary.get("ls_sharpe_by_model", {})
+    deflated_sharpe = summary.get("deflated_sharpe", {})
+    dm_pvalue = summary.get("dm_pvalue_vs_baseline", {})
+    # Require the artifact to carry every reported model so the served table never
+    # has a silent gap; an incomplete artifact falls back to the live recompute.
+    if not (set(_ALL_MODELS) <= set(ic_by_model) <= set(deflated_sharpe) | set(ic_by_model)):
+        return None  # pragma: no cover - committed artifact is always complete
+    if any(m not in deflated_sharpe for m in ic_by_model):
+        return None  # pragma: no cover - committed artifact carries every model's DSR
+
+    return GnnStocksSummary(
+        ic_by_model={m: _safe_float(v) for m, v in ic_by_model.items()},
+        ls_sharpe_by_model={m: _safe_float(v) for m, v in ls_sharpe_by_model.items()},
+        best_model=str(summary.get("best_model", verdict.get("best_baseline", "ridge"))),
+        dm_pvalue_vs_baseline={m: _safe_float(v) for m, v in dm_pvalue.items()},
+        deflated_sharpe={m: _safe_float(v) for m, v in deflated_sharpe.items()},
+        gnn_beats_baseline=bool(verdict.get("gnn_beats_baseline", False)),
+        n_effective_trials=int(committed.get("n_effective_trials", _N_EFFECTIVE_TRIALS)),
+        data_source=str(committed.get("data_source", "synthetic")),
+    )
+
+
+def _committed_panel(*, n_assets: int, seed: int) -> Any:
+    """Build the synthetic panel for the committed-default graph figure (lazy CLI)."""
+    from gnnstocks.cli import _build_panel
+
+    return _build_panel(n_assets=n_assets, seed=seed)
 
 
 def _build_graph_figure(

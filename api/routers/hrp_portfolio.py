@@ -34,7 +34,7 @@ import json
 import logging
 import math
 from datetime import date as _date
-from typing import Any, Literal, get_args
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -219,6 +219,21 @@ def _safe_float(value: float | None) -> float | None:
 
 def _parse_ticker_list(tickers: str) -> tuple[str, ...]:
     return tuple(t for t in (s.strip().upper() for s in tickers.split(",")) if t)
+
+
+def _per_obs_sharpe(returns: pd.Series) -> float:
+    """Per-observation (NON-annualized) Sharpe of a return series.
+
+    This is the exact unit ``deflated_sharpe_ratio`` and
+    ``variance_of_trial_sharpes`` are defined in: mean / std(ddof=1), with NO
+    sqrt(periods_per_year) annualization. Returns ``0.0`` for a degenerate
+    (zero / non-finite std) series.
+    """
+    excess = returns.astype("float64")
+    std = float(excess.std(ddof=1))
+    if std > 0.0 and math.isfinite(std):
+        return float(excess.mean()) / std
+    return 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -448,21 +463,38 @@ def _run_pipeline(returns: pd.DataFrame, req: HRPRequest) -> dict[str, Any]:
         seed=int(req.seed),
     )
 
-    # --- Deflated Sharpe Ratio (honest n_trials) -------------------------
-    # n_trials counts the FULL explored configuration grid: #allocators we ran
-    # times #linkages available (the linkage axis we honestly searched over).
-    n_linkages = max(1, len(get_args(Linkage)))
-    n_effective_trials = max(1, len(allocators) * n_linkages)
+    # --- Deflated Sharpe Ratio (honest n_trials + REAL cross-trial V) ----
+    # The trials evaluated in this horse race are the allocators we actually ran
+    # (HRP + each requested baseline: 1/N, IVP, optionally min_var). We collect
+    # each trial's per-OBSERVATION (non-annualized) OOS Sharpe - the exact unit
+    # the DSR expects - and use their SAMPLE variance as ``V``. Using the real V
+    # (and an honest ``n_effective_trials`` equal to the number of trial Sharpes)
+    # is what makes the deflation benchmark meaningfully sized: a hardcoded
+    # ``V=1.0`` makes the per-observation benchmark ~2.5 (vs observed ~1e-2),
+    # pinning the DSR at 0 so HRP_BEATS_1N could never fire.
+    trial_per_obs_sharpes = [_per_obs_sharpe(res.oos_returns) for res in results.values()]
+    hrp_per_obs_sharpe = _per_obs_sharpe(hrp_oos)
+    n_effective_trials = len(trial_per_obs_sharpes)
 
-    # Per-observation (non-annualized) Sharpe of the selected HRP strategy.
-    hrp_excess = hrp_oos.astype("float64")
-    hrp_std = float(hrp_excess.std(ddof=1))
-    hrp_per_obs_sharpe = (
-        float(hrp_excess.mean()) / hrp_std if hrp_std > 0 and math.isfinite(hrp_std) else 0.0
-    )
-    skew = float(hrp_excess.skew()) if len(hrp_excess) > 2 else 0.0
+    # Cross-trial variance V in per-observation Sharpe units. ``np.var(ddof=1)``
+    # matches the sample-variance convention the DSR's expected-maximum benchmark
+    # assumes for i.i.d. trial Sharpes. With < 2 trials the cross-trial variance
+    # is undefined, so we fall back to the Lo (2002) single-series analytic
+    # variance of the Sharpe estimator, Var(SR_hat) ~= (1 + SR^2 / 2) / n_obs,
+    # in the SAME per-observation units (NOT a silent 0.0 / 1.0).
+    n_obs = len(hrp_oos)
+    if n_effective_trials >= 2:
+        variance_of_trial_sharpes = float(np.var(trial_per_obs_sharpes, ddof=1))
+    elif n_obs >= 2:
+        variance_of_trial_sharpes = (1.0 + 0.5 * hrp_per_obs_sharpe**2) / float(n_obs)
+    else:
+        variance_of_trial_sharpes = 0.0
+    if not math.isfinite(variance_of_trial_sharpes) or variance_of_trial_sharpes < 0.0:
+        variance_of_trial_sharpes = 0.0
+
+    skew = float(hrp_oos.astype("float64").skew()) if n_obs > 2 else 0.0
     # FULL (non-excess) kurtosis: pandas .kurt() returns EXCESS kurtosis, so + 3.
-    kurt = (float(hrp_excess.kurt()) + 3.0) if len(hrp_excess) > 3 else 3.0
+    kurt = (float(hrp_oos.astype("float64").kurt()) + 3.0) if n_obs > 3 else 3.0
     if not math.isfinite(skew):
         skew = 0.0
     if not math.isfinite(kurt):
@@ -471,9 +503,9 @@ def _run_pipeline(returns: pd.DataFrame, req: HRPRequest) -> dict[str, Any]:
     try:
         deflated = deflated_sharpe_ratio(
             hrp_per_obs_sharpe,
-            n_obs=len(hrp_oos),
-            n_trials=int(n_effective_trials),
-            variance_of_trial_sharpes=1.0,
+            n_obs=n_obs,
+            n_trials=max(1, int(n_effective_trials)),
+            variance_of_trial_sharpes=variance_of_trial_sharpes,
             skew=skew,
             kurtosis=kurt,
         )
