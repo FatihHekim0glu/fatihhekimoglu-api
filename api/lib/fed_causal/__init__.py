@@ -25,6 +25,11 @@ from __future__ import annotations
 import sys as _sys
 from pathlib import Path as _Path
 
+# Register the vendored quantcore path before fedcausal so its
+# ``from quantcore.hac import ...`` re-export resolves on first import
+# (mirrors api/lib/regime_hmm and api/lib/crypto_arb_scanner).
+from .. import quantcore as _quantcore_vendor  # noqa: F401
+
 _VENDOR_DIR = _Path(__file__).resolve().parent
 _VENDOR_PATH = str(_VENDOR_DIR)
 if _VENDOR_PATH not in _sys.path:
