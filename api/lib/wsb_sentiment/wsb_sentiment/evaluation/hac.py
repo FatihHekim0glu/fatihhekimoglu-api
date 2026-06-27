@@ -4,6 +4,15 @@ Implements the Newey-West (1987) long-run variance with Bartlett
 weights, optionally with the Andrews (1991) data-dependent lag selector.
 The estimator returns a standard error of the *sample mean* so callers
 can build t-statistics for Sharpe ratios or other averaged metrics.
+
+MIGRATED TO QUANTCORE: the numeric Newey-West kernel and the Andrews lag rule
+are now sourced from ``quantcore`` (github.com/FatihHekim0glu/quantcore @v0.1.0),
+whose ``newey_west_se`` / ``andrews_lag`` are byte-identical to the kernel that
+lived here (parity confirmed to the last ULP). This module keeps its OWN input
+validation so the public contract is unchanged: the local ``ValidationError``
+type (no shared ancestry with ``quantcore.ValidationError``), the
+``pd.Series | NDArray`` annotation, and the EXACT error messages callers and
+tests rely on are all preserved.
 """
 
 from __future__ import annotations
@@ -11,6 +20,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+from quantcore import andrews_lag as _qc_andrews_lag
+from quantcore import newey_west_se as _qc_newey_west_se
 
 from wsb_sentiment._exceptions import ValidationError as InputError
 
@@ -24,6 +35,9 @@ def andrews_lag(t: int) -> int:
     plug-in formula favoured by Newey-West for general autocovariance
     structures.
 
+    MIGRATED: the local positivity check (with this package's message) is kept,
+    then the byte-identical :func:`quantcore.andrews_lag` rule is applied.
+
     Parameters
     ----------
     t : int
@@ -36,7 +50,7 @@ def andrews_lag(t: int) -> int:
     """
     if t <= 0:
         raise InputError(f"t must be positive; got {t}")
-    return int(np.ceil(4.0 * (t / 100.0) ** (2.0 / 9.0)))
+    return _qc_andrews_lag(t)
 
 
 def _coerce_array(returns: pd.Series | NDArray[np.float64]) -> NDArray[np.float64]:
@@ -59,6 +73,12 @@ def newey_west_se(
 ) -> float:
     """Newey-West HAC standard error of the sample mean.
 
+    MIGRATED: the local coercion/validation (this package's ``ValidationError``
+    and messages) is kept, then the byte-identical numeric kernel is delegated to
+    :func:`quantcore.newey_west_se`. With ``lag=None`` the Andrews rule is applied
+    locally (so the local positivity message is preserved) and the resulting
+    truncation is passed through explicitly, keeping the result identical.
+
     Parameters
     ----------
     returns : pandas.Series or numpy.ndarray
@@ -79,13 +99,4 @@ def newey_west_se(
         lag = andrews_lag(t)
     if lag < 0:
         raise InputError(f"lag must be non-negative; got {lag}")
-    centred = arr - arr.mean()
-    gamma0 = float(np.dot(centred, centred) / t)
-    omega = gamma0
-    max_lag = min(lag, t - 1)
-    for h in range(1, max_lag + 1):
-        weight = 1.0 - h / (lag + 1.0)
-        gamma_h = float(np.dot(centred[h:], centred[:-h]) / t)
-        omega += 2.0 * weight * gamma_h
-    omega = max(omega, 0.0)
-    return float(np.sqrt(omega / t))
+    return _qc_newey_west_se(arr, lag=lag)

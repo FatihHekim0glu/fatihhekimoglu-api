@@ -4,6 +4,23 @@ Implements the Newey-West (1987) long-run variance with Bartlett
 weights, optionally with the Andrews (1991) data-dependent lag selector.
 The estimator returns a standard error of the *sample mean* so callers
 can build t-statistics for Sharpe ratios or other averaged metrics.
+
+PARTIALLY MIGRATED TO ``quantcore``. The Bartlett-weighted long-run-variance
+KERNEL now lives in the shared, torch-free ``quantcore`` package
+(:func:`quantcore.hac.newey_west_lrv`), the single source of truth for the
+portfolio's honest-statistics primitives. :func:`newey_west_se` here delegates
+its numeric core to that kernel (parity verified to 0.0 over thousands of random
+inputs) while KEEPING ``edgar_nlp``'s own input validation, because edgar_nlp's
+contract differs from quantcore's in two behaviour-load-bearing ways:
+
+- ``_coerce_array`` REJECTS a non-1-D input with ``ValidationError`` (quantcore's
+  ``_coerce_finite`` silently ``.ravel()``-flattens it instead), and
+- the validation messages (``"returns must be one-dimensional"``,
+  ``"need at least two finite observations"``, ``"lag must be non-negative; ..."``,
+  ``"t must be positive; ..."``) are edgar_nlp's own and are preserved verbatim.
+
+Only the numeric kernel — never the validation surface — is shared, so the public
+behaviour (including the exception type and every message) is unchanged.
 """
 
 from __future__ import annotations
@@ -11,8 +28,12 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+from quantcore.hac import newey_west_lrv as _qc_newey_west_lrv
 
 from edgar_nlp._exceptions import ValidationError
+
+# quantcore-candidate: PARTIALLY MIGRATED — Bartlett LRV kernel delegated to
+# quantcore.hac.newey_west_lrv; edgar_nlp keeps its own validation surface.
 
 __all__ = ["andrews_lag", "newey_west_se"]
 
@@ -79,13 +100,8 @@ def newey_west_se(
         lag = andrews_lag(t)
     if lag < 0:
         raise ValidationError(f"lag must be non-negative; got {lag}")
-    centred = arr - arr.mean()
-    gamma0 = float(np.dot(centred, centred) / t)
-    omega = gamma0
-    max_lag = min(lag, t - 1)
-    for h in range(1, max_lag + 1):
-        weight = 1.0 - h / (lag + 1.0)
-        gamma_h = float(np.dot(centred[h:], centred[:-h]) / t)
-        omega += 2.0 * weight * gamma_h
-    omega = max(omega, 0.0)
+    # Bartlett-weighted long-run variance kernel (shared with quantcore; the
+    # coerced array is already 1-D + finite so quantcore's idempotent coercion is
+    # a no-op and the result is byte-identical to the former local loop).
+    omega = _qc_newey_west_lrv(arr, lag=lag)
     return float(np.sqrt(omega / t))

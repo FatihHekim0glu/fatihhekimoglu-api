@@ -1,30 +1,43 @@
 """Probabilistic and Deflated Sharpe ratios (Bailey & Lopez de Prado, 2014).
 
 These overfitting guards adjust a realized Sharpe ratio for sample length,
-non-normality (skew and kurtosis), and — for the Deflated Sharpe — the number of
+non-normality (skew and kurtosis), and - for the Deflated Sharpe - the number of
 configurations tried (multiple-testing / selection bias). The Deflated Sharpe is
 the honest yardstick that counts the FULL configuration grid as ``n_trials``.
+
+MIGRATED to the shared ``quantcore`` package: the numerical kernels here
+(``_norm_cdf``, ``_norm_ppf``, ``probabilistic_sharpe_ratio``,
+``deflated_sharpe_ratio``) were proven byte-identical (exact ``==`` on an 80k
+random-input grid) to ``quantcore.dsr`` and now delegate to it. Each call is
+wrapped so a ``quantcore.ValidationError`` is translated to this library's own
+:class:`~anomaly_detector._exceptions.ValidationError` (the two have no shared
+ancestry) with the IDENTICAL message string, preserving the local public names,
+signatures, annotations, and exception contract. The overlay's bespoke
+``V = (1 + 0.5*SR^2)/(n-1)`` plug stays local in ``overlay.py`` (a flagged,
+different-contract formula); only these byte-identical kernels were migrated.
 
 Importing this module has no side effects.
 """
 
 from __future__ import annotations
 
-import math
+from quantcore import ValidationError as _QuantCoreValidationError
+from quantcore.dsr import _norm_cdf as _qc_norm_cdf
+from quantcore.dsr import _norm_ppf as _qc_norm_ppf
+from quantcore.dsr import deflated_sharpe_ratio as _qc_deflated_sharpe_ratio
+from quantcore.dsr import probabilistic_sharpe_ratio as _qc_probabilistic_sharpe_ratio
 
 from anomaly_detector._exceptions import ValidationError
 
 # quantcore-candidate: mirrors pairs-trading:evaluation/dsr.py (cross-checked to
-# ma-crossover-backtest:data_snooping.py for the (k+2)/4 term).
-
-# Euler-Mascheroni constant for the expected-maximum order statistic.
-_EULER_MASCHERONI: float = 0.5772156649015329
+# ma-crossover-backtest:data_snooping.py for the (k+2)/4 term). Now delegated to
+# quantcore.dsr (kernels proven byte-identical); see module docstring.
 
 
 def _norm_cdf(x: float) -> float:
     """Standard-normal CDF via the error function (no SciPy import needed)."""
     # quantcore-candidate: Phi(x) = 0.5 * (1 + erf(x / sqrt(2))).
-    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+    return _qc_norm_cdf(x)
 
 
 def _norm_ppf(p: float) -> float:
@@ -34,66 +47,10 @@ def _norm_ppf(p: float) -> float:
     within the DSR parity tolerance (1e-4 against the Bailey-LdP table).
     """
     # quantcore-candidate: Acklam's algorithm (mirrors pairs:evaluation/dsr.py).
-    if not 0.0 < p < 1.0:
-        raise ValidationError(f"_norm_ppf requires p in (0, 1), got {p}.")
-
-    a = (
-        -3.969683028665376e01,
-        2.209460984245205e02,
-        -2.759285104469687e02,
-        1.383577518672690e02,
-        -3.066479806614716e01,
-        2.506628277459239e00,
-    )
-    b = (
-        -5.447609879822406e01,
-        1.615858368580409e02,
-        -1.556989798598866e02,
-        6.680131188771972e01,
-        -1.328068155288572e01,
-    )
-    c = (
-        -7.784894002430293e-03,
-        -3.223964580411365e-01,
-        -2.400758277161838e00,
-        -2.549732539343734e00,
-        4.374664141464968e00,
-        2.938163982698783e00,
-    )
-    d = (
-        7.784695709041462e-03,
-        3.224671290700398e-01,
-        2.445134137142996e00,
-        3.754408661907416e00,
-    )
-
-    p_low = 0.02425
-    p_high = 1.0 - p_low
-
-    if p < p_low:
-        q = math.sqrt(-2.0 * math.log(p))
-        x = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0
-        )
-    elif p <= p_high:
-        q = p - 0.5
-        r = q * q
-        x = (
-            (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5])
-            * q
-            / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1.0)
-        )
-    else:
-        q = math.sqrt(-2.0 * math.log(1.0 - p))
-        x = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-            (((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1.0
-        )
-
-    # One Halley refinement step for full double precision.
-    e = _norm_cdf(x) - p
-    u = e * math.sqrt(2.0 * math.pi) * math.exp(x * x / 2.0)
-    x = x - u / (1.0 + x * u / 2.0)
-    return x
+    try:
+        return _qc_norm_ppf(p)
+    except _QuantCoreValidationError as exc:
+        raise ValidationError(str(exc)) from exc
 
 
 def probabilistic_sharpe_ratio(
@@ -146,24 +103,16 @@ def probabilistic_sharpe_ratio(
     ValidationError
         If ``n_obs < 2``.
     """
-    if n_obs < 2:
-        raise ValidationError(f"probabilistic_sharpe_ratio requires n_obs >= 2, got {n_obs}.")
-
-    sr = float(observed_sharpe)
-    # FULL (non-excess) kurtosis term: (gamma_4 - 1) / 4. For a Gaussian this is
-    # (3 - 1) / 4 = 0.5, the canonical Bailey-Lopez de Prado coefficient. This is
-    # equivalent to the excess-kurtosis form (k + 2) / 4 with k = gamma_4 - 3.
-    variance = 1.0 - skew * sr + 0.25 * (kurtosis - 1.0) * sr * sr
-    # The bracket variance is a non-negativity-guaranteed quantity in theory; if
-    # numerical inputs push it non-positive the statistic is undefined.
-    if variance <= 0.0:
-        raise ValidationError(
-            "probabilistic_sharpe_ratio: non-positive variance term "
-            f"(1 - skew*SR + (kurt-1)/4*SR^2 = {variance}); check skew/kurtosis."
+    try:
+        return _qc_probabilistic_sharpe_ratio(
+            observed_sharpe,
+            n_obs=n_obs,
+            skew=skew,
+            kurtosis=kurtosis,
+            benchmark_sharpe=benchmark_sharpe,
         )
-
-    z = (sr - benchmark_sharpe) * math.sqrt(n_obs - 1) / math.sqrt(variance)
-    return _norm_cdf(z)
+    except _QuantCoreValidationError as exc:
+        raise ValidationError(str(exc)) from exc
 
 
 def deflated_sharpe_ratio(
@@ -222,35 +171,14 @@ def deflated_sharpe_ratio(
         If ``n_obs < 2``, ``n_trials < 1``, or
         ``variance_of_trial_sharpes < 0``.
     """
-    if n_obs < 2:
-        raise ValidationError(f"deflated_sharpe_ratio requires n_obs >= 2, got {n_obs}.")
-    if n_trials < 1:
-        raise ValidationError(f"deflated_sharpe_ratio requires n_trials >= 1, got {n_trials}.")
-    if variance_of_trial_sharpes < 0.0:
-        raise ValidationError(
-            "deflated_sharpe_ratio requires variance_of_trial_sharpes >= 0, "
-            f"got {variance_of_trial_sharpes}."
+    try:
+        return _qc_deflated_sharpe_ratio(
+            observed_sharpe,
+            n_obs=n_obs,
+            n_trials=n_trials,
+            variance_of_trial_sharpes=variance_of_trial_sharpes,
+            skew=skew,
+            kurtosis=kurtosis,
         )
-
-    # Expected maximum of n_trials i.i.d. trial Sharpes (Gumbel/extreme-value
-    # approximation): SR*_0 = sqrt(V) * [ (1 - gamma) * z(1 - 1/N)
-    #                                     + gamma * z(1 - 1/(N*e)) ].
-    # With a single trial (N == 1) the expected-maximum benchmark collapses to
-    # zero, so the DSR reduces to the plain PSR against zero.
-    sqrt_v = math.sqrt(variance_of_trial_sharpes)
-    n = float(n_trials)
-    if n_trials == 1 or sqrt_v == 0.0:
-        benchmark = 0.0
-    else:
-        gamma = _EULER_MASCHERONI
-        z1 = _norm_ppf(1.0 - 1.0 / n)
-        z2 = _norm_ppf(1.0 - 1.0 / (n * math.e))
-        benchmark = sqrt_v * ((1.0 - gamma) * z1 + gamma * z2)
-
-    return probabilistic_sharpe_ratio(
-        observed_sharpe,
-        n_obs=n_obs,
-        skew=skew,
-        kurtosis=kurtosis,
-        benchmark_sharpe=benchmark,
-    )
+    except _QuantCoreValidationError as exc:
+        raise ValidationError(str(exc)) from exc

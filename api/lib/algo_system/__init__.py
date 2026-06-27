@@ -10,6 +10,14 @@ vendored modules resolve ``algosystem`` as a top-level package without any edits
 the vendored files themselves (mirrors api/lib/fed_causal, api/lib/hrp and
 api/lib/rl_trader).
 
+DEPENDENCY: the vendored ``algosystem`` now imports the shared ``quantcore``
+kernel — ``algosystem.evaluation.dsr`` / ``.pbo`` / ``.hac`` re-export PSR/DSR,
+PBO/CSCV and the Newey-West HAC standard error from quantcore (drift-elimination;
+the math is byte-identical because quantcore was seeded from this repo), and
+``algosystem.__init__`` imports the evaluation layer on load. We therefore register
+the vendored ``quantcore`` source tree onto ``sys.path`` FIRST so ``import
+quantcore`` resolves before any ``algosystem`` import triggers it.
+
 The package is import-pure and TORCH-FREE: importing it pulls in NO torch, NO
 onnx/onnxruntime, NO sklearn, NO stable-baselines3 and NO gymnasium — the whole
 signal -> purged walk-forward backtest -> simulated bar-by-bar paper-broker
@@ -27,6 +35,10 @@ from __future__ import annotations
 
 import sys as _sys
 from pathlib import Path as _Path
+
+# Register the vendored quantcore path before algosystem so its
+# ``from quantcore import ...`` re-exports resolve on first import.
+from .. import quantcore as _quantcore_vendor  # noqa: F401
 
 _VENDOR_DIR = _Path(__file__).resolve().parent
 _VENDOR_PATH = str(_VENDOR_DIR)

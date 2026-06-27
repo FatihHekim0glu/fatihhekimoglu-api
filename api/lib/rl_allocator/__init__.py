@@ -14,12 +14,23 @@ NO gymnasium and NO onnxruntime. The rl-allocator router serves the committed PP
 policy through onnxruntime ONLY (the ``[serve]`` extra); torch / sb3 / gymnasium
 are never imported on this serve path. The equal-weight (1/N) / Markowitz /
 risk-parity baselines are pure numpy and run live (train-only covariance).
+
+DEPENDENCY: the vendored ``rlallocator`` now imports the shared ``quantcore``
+kernel (``rlallocator.evaluation.dsr`` re-exports DSR/PSR from quantcore), and
+``rlallocator.__init__`` imports ``evaluation.dsr`` on load. We therefore register
+the vendored ``quantcore`` source tree onto ``sys.path`` FIRST so ``import
+quantcore`` resolves before any ``rlallocator`` import triggers it (mirrors
+api/lib/rl_trader and api/lib/regime_hmm).
 """
 
 from __future__ import annotations
 
 import sys as _sys
 from pathlib import Path as _Path
+
+# Register the vendored quantcore path before rlallocator so its
+# ``from quantcore import ...`` re-exports resolve on first import.
+from .. import quantcore as _quantcore_vendor  # noqa: F401
 
 _VENDOR_DIR = _Path(__file__).resolve().parent
 _VENDOR_PATH = str(_VENDOR_DIR)
